@@ -6,7 +6,8 @@ import type {
   Segment,
   SideIndex,
   Transform,
-} from '../types'
+} from '../../types'
+
 
 export const VIEW_BOX = {
   minX: -500,
@@ -54,7 +55,7 @@ export const getHousePolygon = (geometry: HouseGeometry): Polygon => {
 }
 
 export const transformPolygon = (polygon: Polygon, transform: Transform): Polygon => {
-  return polygon.map((point) => applyTransform(transform, point))
+  return polygon.map((point: Point) => applyTransform(transform, point))
 }
 
 const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y
@@ -194,4 +195,5 @@ export const computeTransforms = (houses: HouseNode[], geometry: HouseGeometry) 
 
   return transforms
 }
+
 

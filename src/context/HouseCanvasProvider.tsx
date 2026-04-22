@@ -7,10 +7,11 @@ import {
 } from 'react'
 import {
   createRootHouse,
-} from '../helpers/houseGraph'
-import { addRandomHouse } from '../helpers/growth'
-import { runSimulationTick } from '../helpers/simulation'
-import { HouseCanvasContext } from './houseCanvasStore'
+} from '../domain/house/graph'
+import { addRandomHouse } from '../domain/house/growth'
+import { runSimulationTick } from '../engine/simulation/runTick'
+import type { SimulationWorldState } from '../engine/simulation/types'
+import { HouseCanvasContext } from './HouseCanvasContext'
 import {
   type HouseGeometry,
   type HouseNode,
@@ -41,6 +42,7 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 })
   const [isPlaying, setIsPlaying] = useState(false)
   const [debugProfilingEnabled, setDebugProfilingEnabled] = useState(false)
+  const [showConnectionSideIndicators, setShowConnectionSideIndicators] = useState(false)
   const [tickCount, setTickCount] = useState(0)
   const [simulationSpeed, setSimulationSpeed] = useState(1)
   const [sideBehaviorByCoverage, setSideBehaviorByCoverage] = useState<SideBehaviorByCoverage>(
@@ -56,6 +58,7 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
 
   const nextHouseIdRef = useRef(1)
   const tickCountRef = useRef(0)
+  const simulationWorldStateRef = useRef<SimulationWorldState | undefined>(undefined)
 
   const houseGeometry = useMemo<HouseGeometry>(() => {
     const baseUnderside = 120
@@ -85,6 +88,7 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
 
       if (next !== current) {
         nextHouseIdRef.current += 1
+        simulationWorldStateRef.current = undefined
       }
 
       return next
@@ -99,6 +103,10 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
   }
 
   useEffect(() => {
+    simulationWorldStateRef.current = undefined
+  }, [houseGeometry])
+
+  useEffect(() => {
     if (!isPlaying) return
 
     const intervalMs = 1000 / simulationSpeed
@@ -110,10 +118,12 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
           houseGeometry,
           allowOverlap,
           nextHouseId: nextHouseIdRef.current,
+          worldState: simulationWorldStateRef.current,
           debugProfilingEnabled,
         })
 
         nextHouseIdRef.current = result.nextHouseId
+        simulationWorldStateRef.current = result.worldState
 
         if (debugProfilingEnabled && result.profile) {
           const tick = tickCountRef.current + 1
@@ -146,6 +156,7 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
         pan,
         isPlaying,
         debugProfilingEnabled,
+        showConnectionSideIndicators,
         tickCount,
         simulationSpeed,
         sideBehaviorByCoverage,
@@ -168,6 +179,7 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
         setZoom,
         setIsPlaying,
         setDebugProfilingEnabled,
+        setShowConnectionSideIndicators,
         setSimulationSpeed,
         setSideBehavior,
         resetView,
@@ -178,5 +190,8 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
     </HouseCanvasContext.Provider>
   )
 }
+
+
+
 
 

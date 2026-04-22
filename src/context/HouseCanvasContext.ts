@@ -14,6 +14,7 @@ export type HouseCanvasContextValue = {
   pan: Point
   isPlaying: boolean
   debugProfilingEnabled: boolean
+  showConnectionSideIndicators: boolean
   tickCount: number
   simulationSpeed: number
   sideBehaviorByCoverage: SideBehaviorByCoverage
@@ -36,6 +37,7 @@ export type HouseCanvasContextValue = {
   setZoom: Dispatch<SetStateAction<number>>
   setIsPlaying: Dispatch<SetStateAction<boolean>>
   setDebugProfilingEnabled: Dispatch<SetStateAction<boolean>>
+  setShowConnectionSideIndicators: Dispatch<SetStateAction<boolean>>
   setSimulationSpeed: Dispatch<SetStateAction<number>>
   setSideBehavior: (coveredSides: CoveredSideCount, behavior: SideBehavior) => void
   resetView: () => void
@@ -43,4 +45,7 @@ export type HouseCanvasContextValue = {
 }
 
 export const HouseCanvasContext = createContext<HouseCanvasContextValue | null>(null)
+
+
+
 

@@ -1,4 +1,4 @@
-import type { HouseConnection, HouseNode, SideIndex, SideKind } from '../types'
+import type { HouseConnection, HouseNode, SideIndex, SideKind } from '../../types'
 
 export const ALL_SIDES: SideIndex[] = [0, 1, 2, 3, 4]
 
@@ -58,4 +58,40 @@ export const connectHouses = (
 
   return nextHouses
 }
+
+export const connectExistingHouses = (
+  houses: HouseNode[],
+  firstHouseId: number,
+  firstSide: SideIndex,
+  secondHouseId: number,
+  secondSide: SideIndex,
+) => {
+  if (firstHouseId === secondHouseId) return houses
+
+  const firstHouse = houses.find((house) => house.id === firstHouseId)
+  const secondHouse = houses.find((house) => house.id === secondHouseId)
+  if (!firstHouse || !secondHouse) return houses
+
+  const firstConnection = firstHouse.sides[firstSide]
+  const secondConnection = secondHouse.sides[secondSide]
+
+  if (firstConnection || secondConnection) return houses
+
+  return houses.map((house) => {
+    if (house.id === firstHouseId) {
+      const sides = [...house.sides]
+      sides[firstSide] = { houseId: secondHouseId, side: secondSide }
+      return { ...house, sides }
+    }
+
+    if (house.id === secondHouseId) {
+      const sides = [...house.sides]
+      sides[secondSide] = { houseId: firstHouseId, side: firstSide }
+      return { ...house, sides }
+    }
+
+    return house
+  })
+}
+
 

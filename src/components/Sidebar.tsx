@@ -1,9 +1,10 @@
-import { useHouseCanvas } from './context/useHouseCanvas'
+import { useHouseCanvas } from '../context/useHouseCanvas'
 import {
   COVERED_SIDE_COUNTS,
   SIDE_BEHAVIOR_OPTIONS,
+  type CoveredSideCount,
   type SideBehavior,
-} from './types'
+} from '../types'
 
 const isSideBehavior = (value: string): value is SideBehavior =>
   SIDE_BEHAVIOR_OPTIONS.includes(value as SideBehavior)
@@ -13,6 +14,7 @@ function Sidebar() {
     addHouse,
     allowOverlap,
     debugProfilingEnabled,
+    showConnectionSideIndicators,
     fillColor,
     isPlaying,
     resetView,
@@ -26,6 +28,7 @@ function Sidebar() {
     setStrokeColor,
     setSideBehavior,
     setDebugProfilingEnabled,
+    setShowConnectionSideIndicators,
     setUndersideScale,
     simulationSpeed,
     sideBehaviorByCoverage,
@@ -36,14 +39,23 @@ function Sidebar() {
   } = useHouseCanvas()
 
   return (
-    <aside style={{ width: 260, padding: 16 }}>
+    <aside
+      style={{
+        width: 260,
+        height: '100%',
+        padding: 16,
+        overflowY: 'auto',
+        boxSizing: 'border-box',
+        flexShrink: 0,
+      }}
+    >
       <h2 style={{ marginTop: 0 }}>Settings</h2>
 
       <fieldset style={{ margin: '0 0 12px 0' }}>
         <legend>Simulation</legend>
         <button
           type="button"
-          onClick={() => setIsPlaying((current) => !current)}
+          onClick={() => setIsPlaying((current: boolean) => !current)}
           style={{ padding: '6px 10px', cursor: 'pointer' }}
         >
           {isPlaying ? 'Pause' : 'Play'}
@@ -56,6 +68,14 @@ function Sidebar() {
             onChange={(event) => setDebugProfilingEnabled(event.target.checked)}
           />{' '}
           Debug profiling logs
+        </label>
+        <label style={{ display: 'block', marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={showConnectionSideIndicators}
+            onChange={(event) => setShowConnectionSideIndicators(event.target.checked)}
+          />{' '}
+          Show connected sides
         </label>
         <label htmlFor="simulation-speed" style={{ display: 'block', marginTop: 12 }}>
           Speed: {simulationSpeed}
@@ -70,7 +90,7 @@ function Sidebar() {
           onChange={(event) => setSimulationSpeed(Number(event.target.value))}
           style={{ width: '100%' }}
         />
-        {COVERED_SIDE_COUNTS.map((coveredSides) => (
+        {COVERED_SIDE_COUNTS.map((coveredSides: CoveredSideCount) => (
           <div key={coveredSides} style={{ marginTop: 12 }}>
             <label htmlFor={`coverage-${coveredSides}`} style={{ display: 'block' }}>
               {coveredSides} sides covered
@@ -86,7 +106,7 @@ function Sidebar() {
               }}
               style={{ width: '100%' }}
             >
-              {SIDE_BEHAVIOR_OPTIONS.map((option) => (
+              {SIDE_BEHAVIOR_OPTIONS.map((option: SideBehavior) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -191,4 +211,5 @@ function Sidebar() {
 }
 
 export default Sidebar
+
 
