@@ -1,24 +1,12 @@
 import type {
   HouseGeometry,
-  HouseConnection,
   HouseNode,
   Point,
   Polygon,
   Segment,
   SideIndex,
-  SideKind,
   Transform,
 } from '../types'
-
-export const ALL_SIDES: SideIndex[] = [0, 1, 2, 3, 4]
-
-export const SIDE_KIND_BY_INDEX: Record<SideIndex, SideKind> = {
-  0: 'down',
-  1: 'side',
-  2: 'roof',
-  3: 'roof',
-  4: 'side',
-}
 
 export const VIEW_BOX = {
   minX: -500,
@@ -39,9 +27,6 @@ export const IDENTITY_TRANSFORM: Transform = {
 }
 
 export const OVERLAP_EPSILON = 0.0001
-export const MAX_PLACEMENT_ATTEMPTS = 200
-
-export const createEmptySides = () => [null, null, null, null, null] as Array<HouseConnection | null>
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -127,14 +112,6 @@ export const getSideSegment = (side: SideIndex, geometry: HouseGeometry): Segmen
   return { start: polygon[4], end: polygon[0] }
 }
 
-export const getFreeSides = (house: HouseNode) => {
-  return ALL_SIDES.filter((side) => house.sides[side] === null)
-}
-
-export const getCompatibleSides = (side: SideIndex) => {
-  return ALL_SIDES.filter((candidate) => SIDE_KIND_BY_INDEX[candidate] === SIDE_KIND_BY_INDEX[side])
-}
-
 export const computeChildTransform = (
   parentTransform: Transform,
   parentSide: SideIndex,
@@ -180,51 +157,41 @@ export const computeTransforms = (houses: HouseNode[], geometry: HouseGeometry) 
   const transforms = new Map<number, Transform>()
   if (houses.length === 0) return transforms
 
-  transforms.set(houses[0].id, IDENTITY_TRANSFORM)
-
+  // Supports a forest of roots so detached survivors can still render and regrow.
   for (const house of houses) {
     if (house.parentId === null || house.parentSide === null || house.ownSide === null) {
-      continue
+      transforms.set(house.id, house.rootTransform ?? IDENTITY_TRANSFORM)
     }
+  }
 
-    const parentTransform = transforms.get(house.parentId)
-    if (!parentTransform) continue
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const house of houses) {
+      if (transforms.has(house.id)) continue
+      if (house.parentId === null || house.parentSide === null || house.ownSide === null) {
+        transforms.set(house.id, house.rootTransform ?? IDENTITY_TRANSFORM)
+        changed = true
+        continue
+      }
 
-    transforms.set(
-      house.id,
-      computeChildTransform(parentTransform, house.parentSide, house.ownSide, geometry),
-    )
+      const parentTransform = transforms.get(house.parentId)
+      if (!parentTransform) continue
+
+      transforms.set(
+        house.id,
+        computeChildTransform(parentTransform, house.parentSide, house.ownSide, geometry),
+      )
+      changed = true
+    }
+  }
+
+  for (const house of houses) {
+    if (!transforms.has(house.id)) {
+      transforms.set(house.id, IDENTITY_TRANSFORM)
+    }
   }
 
   return transforms
-}
-
-export const connectHouses = (
-  houses: HouseNode[],
-  hostHouseId: number,
-  hostSide: SideIndex,
-  newHouseId: number,
-  newHouseSide: SideIndex,
-) => {
-  const nextHouses = houses.map((house) => {
-    if (house.id !== hostHouseId) return house
-
-    const updatedSides = [...house.sides]
-    updatedSides[hostSide] = { houseId: newHouseId, side: newHouseSide }
-    return { ...house, sides: updatedSides }
-  })
-
-  const newHouseSides = createEmptySides()
-  newHouseSides[newHouseSide] = { houseId: hostHouseId, side: hostSide }
-
-  nextHouses.push({
-    id: newHouseId,
-    sides: newHouseSides,
-    parentId: hostHouseId,
-    parentSide: hostSide,
-    ownSide: newHouseSide,
-  })
-
-  return nextHouses
 }
 

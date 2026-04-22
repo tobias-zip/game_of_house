@@ -1,24 +1,34 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
 import {
-  MAX_PLACEMENT_ATTEMPTS,
-  computeChildTransform,
-  computeTransforms,
-  connectHouses,
-  createEmptySides,
-  getCompatibleSides,
-  getFreeSides,
-  getHousePolygon,
-  polygonsOverlapArea,
-  randomItem,
-  transformPolygon,
-} from '../helpers/geometry'
+  createRootHouse,
+} from '../helpers/houseGraph'
+import { addRandomHouse } from '../helpers/growth'
+import { runSimulationTick } from '../helpers/simulation'
 import { HouseCanvasContext } from './houseCanvasStore'
-import type { HouseGeometry, HouseNode, Point } from '../types'
+import {
+  type HouseGeometry,
+  type HouseNode,
+  type Point,
+} from '../types'
+
+type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
+type SideBehavior = 'die' | 'nothing' | 'grow'
+type SideBehaviorByCoverage = Record<CoveredSideCount, SideBehavior>
+
+const DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE: SideBehaviorByCoverage = {
+  0: 'die',
+  1: 'grow',
+  2: 'grow',
+  3: 'nothing',
+  4: 'die',
+  5: 'die',
+}
 
 type HouseCanvasProviderProps = {
   children: ReactNode
@@ -29,21 +39,23 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
   const [sideScale, setSideScale] = useState(0.68)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 })
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [debugProfilingEnabled, setDebugProfilingEnabled] = useState(false)
+  const [tickCount, setTickCount] = useState(0)
+  const [simulationSpeed, setSimulationSpeed] = useState(1)
+  const [sideBehaviorByCoverage, setSideBehaviorByCoverage] = useState<SideBehaviorByCoverage>(
+    DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE,
+  )
   const [roofAngle, setRoofAngle] = useState(80)
   const [allowOverlap, setAllowOverlap] = useState(false)
   const [fillColor, setFillColor] = useState('#d9d9d9')
   const [strokeColor, setStrokeColor] = useState('#000000')
   const [houses, setHouses] = useState<HouseNode[]>([
-    {
-      id: 0,
-      sides: createEmptySides(),
-      parentId: null,
-      parentSide: null,
-      ownSide: null,
-    },
+    createRootHouse(0),
   ])
 
   const nextHouseIdRef = useRef(1)
+  const tickCountRef = useRef(0)
 
   const houseGeometry = useMemo<HouseGeometry>(() => {
     const baseUnderside = 120
@@ -67,61 +79,76 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
   }
 
   const addHouse = () => {
-    setHouses((current) => {
-      const candidates = current.filter((house) => getFreeSides(house).length > 0)
-      if (candidates.length === 0) return current
+    setHouses((current: HouseNode[]) => {
+      const nextHouseId = nextHouseIdRef.current
+      const next = addRandomHouse(current, houseGeometry, allowOverlap, nextHouseId)
 
-      const currentTransforms = computeTransforms(current, houseGeometry)
-      const localHousePolygon = getHousePolygon(houseGeometry)
-
-      for (let attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; attempt += 1) {
-        const hostHouse = randomItem(candidates)
-        const hostSide = randomItem(getFreeSides(hostHouse))
-        const newHouseSide = randomItem(getCompatibleSides(hostSide))
-
-        const parentTransform = currentTransforms.get(hostHouse.id)
-        if (!parentTransform) continue
-
-        const newTransform = computeChildTransform(
-          parentTransform,
-          hostSide,
-          newHouseSide,
-          houseGeometry,
-        )
-
-        if (!allowOverlap) {
-          const newPolygon = transformPolygon(localHousePolygon, newTransform)
-          let overlaps = false
-
-          for (const house of current) {
-            const transform = currentTransforms.get(house.id)
-            if (!transform) continue
-
-            const polygon = transformPolygon(localHousePolygon, transform)
-            if (polygonsOverlapArea(newPolygon, polygon)) {
-              overlaps = true
-              break
-            }
-          }
-
-          if (overlaps) continue
-        }
-
-        const newHouseId = nextHouseIdRef.current
+      if (next !== current) {
         nextHouseIdRef.current += 1
-
-        return connectHouses(current, hostHouse.id, hostSide, newHouseId, newHouseSide)
       }
 
-      return current
+      return next
     })
   }
+
+  const setSideBehavior = (coveredSides: CoveredSideCount, behavior: SideBehavior) => {
+    setSideBehaviorByCoverage((current: SideBehaviorByCoverage) => ({
+      ...current,
+      [coveredSides]: behavior,
+    }))
+  }
+
+  useEffect(() => {
+    if (!isPlaying) return
+
+    const intervalMs = 1000 / simulationSpeed
+    const intervalId = window.setInterval(() => {
+      setHouses((current) => {
+        const result = runSimulationTick({
+          houses: current,
+          sideBehaviorByCoverage,
+          houseGeometry,
+          allowOverlap,
+          nextHouseId: nextHouseIdRef.current,
+          debugProfilingEnabled,
+        })
+
+        nextHouseIdRef.current = result.nextHouseId
+
+        if (debugProfilingEnabled && result.profile) {
+          const tick = tickCountRef.current + 1
+          console.log('[sim-profile]', {
+            tick,
+            ...result.profile,
+          })
+        }
+
+        return result.houses
+      })
+      tickCountRef.current += 1
+      setTickCount(tickCountRef.current)
+    }, intervalMs)
+
+    return () => window.clearInterval(intervalId)
+  }, [
+    allowOverlap,
+    debugProfilingEnabled,
+    houseGeometry,
+    isPlaying,
+    sideBehaviorByCoverage,
+    simulationSpeed,
+  ])
 
   return (
     <HouseCanvasContext.Provider
       value={{
         zoom,
         pan,
+        isPlaying,
+        debugProfilingEnabled,
+        tickCount,
+        simulationSpeed,
+        sideBehaviorByCoverage,
         undersideScale,
         sideScale,
         roofAngle,
@@ -139,6 +166,10 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
         setStrokeColor,
         setPan,
         setZoom,
+        setIsPlaying,
+        setDebugProfilingEnabled,
+        setSimulationSpeed,
+        setSideBehavior,
         resetView,
         addHouse,
       }}

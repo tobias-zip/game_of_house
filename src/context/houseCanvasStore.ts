@@ -1,9 +1,22 @@
 import { createContext, type Dispatch, type SetStateAction } from 'react'
-import type { HouseGeometry, HouseNode, Point } from '../types'
+import type {
+  HouseGeometry,
+  HouseNode,
+  Point,
+} from '../types'
+
+type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
+type SideBehavior = 'die' | 'nothing' | 'grow'
+type SideBehaviorByCoverage = Record<CoveredSideCount, SideBehavior>
 
 export type HouseCanvasContextValue = {
   zoom: number
   pan: Point
+  isPlaying: boolean
+  debugProfilingEnabled: boolean
+  tickCount: number
+  simulationSpeed: number
+  sideBehaviorByCoverage: SideBehaviorByCoverage
   undersideScale: number
   sideScale: number
   roofAngle: number
@@ -21,6 +34,10 @@ export type HouseCanvasContextValue = {
   setStrokeColor: Dispatch<SetStateAction<string>>
   setPan: Dispatch<SetStateAction<Point>>
   setZoom: Dispatch<SetStateAction<number>>
+  setIsPlaying: Dispatch<SetStateAction<boolean>>
+  setDebugProfilingEnabled: Dispatch<SetStateAction<boolean>>
+  setSimulationSpeed: Dispatch<SetStateAction<number>>
+  setSideBehavior: (coveredSides: CoveredSideCount, behavior: SideBehavior) => void
   resetView: () => void
   addHouse: () => void
 }
