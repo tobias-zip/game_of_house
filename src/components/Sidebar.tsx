@@ -2,12 +2,17 @@ import { useHouseCanvas } from '../context/useHouseCanvas'
 import {
   COVERED_SIDE_COUNTS,
   SIDE_BEHAVIOR_OPTIONS,
+  CLICK_ACTION_OPTIONS,
   type CoveredSideCount,
   type SideBehavior,
+  type ClickAction,
 } from '../types'
 
 const isSideBehavior = (value: string): value is SideBehavior =>
   SIDE_BEHAVIOR_OPTIONS.includes(value as SideBehavior)
+
+const isClickAction = (value: string): value is ClickAction =>
+  CLICK_ACTION_OPTIONS.includes(value as ClickAction)
 
 function Sidebar() {
   const {
@@ -36,6 +41,10 @@ function Sidebar() {
     strokeColor,
     tickCount,
     undersideScale,
+    clickAction,
+    rippleParams,
+    setClickAction,
+    setRippleParams,
   } = useHouseCanvas()
 
   return (
@@ -133,6 +142,126 @@ function Sidebar() {
           />{' '}
           Allow overlap
         </label>
+      </fieldset>
+
+      <fieldset style={{ margin: '0 0 12px 0' }}>
+        <legend>Click Action</legend>
+        <label htmlFor="click-action" style={{ display: 'block' }}>
+          Action
+        </label>
+        <select
+          id="click-action"
+          value={clickAction}
+          onChange={(event) => {
+            const { value } = event.target
+            if (isClickAction(value)) {
+              setClickAction(value)
+            }
+          }}
+          style={{ width: '100%' }}
+        >
+          {CLICK_ACTION_OPTIONS.map((option: ClickAction) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+
+        {clickAction === 'ripple' && (
+          <div style={{ marginTop: 12 }}>
+            <label htmlFor="ripple-color" style={{ display: 'block' }}>
+              Color
+            </label>
+            <input
+              id="ripple-color"
+              type="color"
+              value={rippleParams.color}
+              onChange={(event) =>
+                setRippleParams((current) => ({
+                  ...current,
+                  color: event.target.value,
+                }))
+              }
+              style={{ width: '100%' }}
+            />
+
+            <label htmlFor="ripple-opacity" style={{ display: 'block', marginTop: 12 }}>
+              Opacity: {rippleParams.opacity.toFixed(2)}
+            </label>
+            <input
+              id="ripple-opacity"
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={rippleParams.opacity}
+              onChange={(event) =>
+                setRippleParams((current) => ({
+                  ...current,
+                  opacity: Number(event.target.value),
+                }))
+              }
+              style={{ width: '100%' }}
+            />
+
+            <label htmlFor="ripple-speed" style={{ display: 'block', marginTop: 12 }}>
+              Speed: {rippleParams.speed.toFixed(0)}
+            </label>
+            <input
+              id="ripple-speed"
+              type="range"
+              min={10}
+              max={100}
+              step={1}
+              value={rippleParams.speed}
+              onChange={(event) =>
+                setRippleParams((current) => ({
+                  ...current,
+                  speed: Number(event.target.value),
+                }))
+              }
+              style={{ width: '100%' }}
+            />
+
+            <label htmlFor="ripple-range" style={{ display: 'block', marginTop: 12 }}>
+              Range (hops): {rippleParams.range.toFixed(0)}
+            </label>
+            <input
+              id="ripple-range"
+              type="range"
+              min={1}
+              max={100}
+              step={1}
+              value={rippleParams.range}
+              onChange={(event) =>
+                setRippleParams((current) => ({
+                  ...current,
+                  range: Number(event.target.value),
+                }))
+              }
+              style={{ width: '100%' }}
+            />
+
+            <label htmlFor="ripple-lifetime" style={{ display: 'block', marginTop: 12 }}>
+              Lifetime: {rippleParams.lifetime.toFixed(0)}ms
+            </label>
+            <input
+              id="ripple-lifetime"
+              type="range"
+              min={10}
+              max={1000}
+              step={10}
+              value={rippleParams.lifetime}
+              onChange={(event) =>
+                setRippleParams((current) => ({
+                  ...current,
+                  lifetime: Number(event.target.value),
+                }))
+              }
+              style={{ width: '100%' }}
+            />
+          </div>
+        )}
       </fieldset>
 
       <fieldset style={{ margin: '0 0 12px 0' }}>

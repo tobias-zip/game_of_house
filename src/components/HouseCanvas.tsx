@@ -3,9 +3,16 @@ import {
   clamp,
   computeTransforms,
   getHousePolygon,
+  pointInPolygon,
+  transformPolygon,
   VIEW_BOX,
 } from '../domain/house/geometry'
 import { useHouseCanvas } from '../context/useHouseCanvas'
+import {
+  computeRippleEffect,
+  hexToRgb,
+} from '../engine/actions/ripple'
+import type { Transform } from '../types'
 
 const getCentroid = (polygon: { x: number; y: number }[]) => {
   let x = 0
@@ -85,11 +92,14 @@ function HouseCanvas() {
     fillColor,
     strokeColor,
     showConnectionSideIndicators,
-  } =
-    useHouseCanvas()
+    clickAction,
+    propagatingRipples,
+    triggerRipple,
+  } = useHouseCanvas()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const dragState = useRef({ active: false, x: 0, y: 0 })
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
+  const transformsRef = useRef<Map<number, Transform>>(new Map())
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -144,8 +154,40 @@ function HouseCanvas() {
     ctx.lineWidth = 1
 
     const transforms = computeTransforms(houses, houseGeometry)
+    transformsRef.current = transforms
     const housePolygon = getHousePolygon(houseGeometry)
     const centroid = getCentroid(housePolygon)
+
+    // Compute ripple effects for each propagating ripple.
+    // Lifetime is per-house: once the wave reaches a house, it remains colored for `lifetime` ms.
+    const rippleEffectsByHouseId = new Map<number, { color: string; opacity: number }[]>()
+    const now = Date.now()
+
+    for (const ripple of propagatingRipples) {
+      const elapsedTime = now - ripple.startTime
+      const effects = computeRippleEffect(
+        houses,
+        ripple.originHouseId,
+        ripple.params.range,
+      )
+
+      for (const effect of effects) {
+        const safeSpeed = Math.max(0.0001, ripple.params.speed)
+        const reachDelayMs = (effect.distance / safeSpeed) * 1000
+        const activeForHouse =
+          elapsedTime >= reachDelayMs && elapsedTime <= reachDelayMs + ripple.params.lifetime
+
+        if (activeForHouse) {
+          if (!rippleEffectsByHouseId.has(effect.houseId)) {
+            rippleEffectsByHouseId.set(effect.houseId, [])
+          }
+          rippleEffectsByHouseId.get(effect.houseId)!.push({
+            color: ripple.params.color,
+            opacity: ripple.params.opacity,
+          })
+        }
+      }
+    }
 
     for (const house of houses) {
       const transform = transforms.get(house.id)
@@ -161,6 +203,10 @@ function HouseCanvas() {
         transform.f,
       )
 
+      // Draw base house
+      ctx.fillStyle = fillColor
+      ctx.strokeStyle = strokeColor
+      ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(housePolygon[0].x, housePolygon[0].y)
       for (let index = 1; index < housePolygon.length; index += 1) {
@@ -169,6 +215,26 @@ function HouseCanvas() {
       ctx.closePath()
       ctx.fill()
       ctx.stroke()
+
+      // Apply ripple effects with additive blending
+      const rippleEffects = rippleEffectsByHouseId.get(house.id)
+      if (rippleEffects && rippleEffects.length > 0) {
+        ctx.globalCompositeOperation = 'lighter'
+        for (const effect of rippleEffects) {
+          const rgb = hexToRgb(effect.color)
+          if (rgb) {
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${effect.opacity})`
+            ctx.beginPath()
+            ctx.moveTo(housePolygon[0].x, housePolygon[0].y)
+            for (let index = 1; index < housePolygon.length; index += 1) {
+              ctx.lineTo(housePolygon[index].x, housePolygon[index].y)
+            }
+            ctx.closePath()
+            ctx.fill()
+          }
+        }
+        ctx.globalCompositeOperation = 'source-over'
+      }
 
       if (showConnectionSideIndicators) {
         for (let sideIndex = 0; sideIndex < house.sides.length; sideIndex += 1) {
@@ -194,6 +260,7 @@ function HouseCanvas() {
     showConnectionSideIndicators,
     strokeColor,
     zoom,
+    propagatingRipples,
   ])
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -216,6 +283,61 @@ function HouseCanvas() {
     }
   }
 
+  const onClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas || clickAction === 'nothing') return
+
+    if (canvasSize.width === 0 || canvasSize.height === 0) return
+
+    // Use the event target rect (the wrapper div) to avoid any subtle offsets
+    // between the canvas element and its container (borders, subpixel layout, etc.).
+    const rect = event.currentTarget.getBoundingClientRect()
+    const canvasX = event.clientX - rect.left
+    const canvasY = event.clientY - rect.top
+
+    // Convert canvas pixel coordinates to world coordinates
+    const fitScale = Math.min(
+      canvasSize.width / VIEW_BOX.width,
+      canvasSize.height / VIEW_BOX.height,
+    )
+    const offsetX = (canvasSize.width - VIEW_BOX.width * fitScale) / 2
+    const offsetY = (canvasSize.height - VIEW_BOX.height * fitScale) / 2
+
+    // Build the exact same transform used for rendering (in CSS pixels) and invert it.
+    // This avoids errors from hand-derived inverse math, especially when zooming.
+    const viewToScreen = new DOMMatrix()
+      .translate(offsetX, offsetY)
+      .scale(fitScale)
+      .translate(-VIEW_BOX.minX, -VIEW_BOX.minY)
+      .translate(pan.x, pan.y)
+      .scale(zoom)
+
+    let screenToView: DOMMatrix
+    try {
+      screenToView = viewToScreen.inverse()
+    } catch {
+      return
+    }
+
+    const p = new DOMPoint(canvasX, canvasY).matrixTransform(screenToView)
+    const clickPoint = { x: p.x, y: p.y }
+    const housePolygon = getHousePolygon(houseGeometry)
+
+    // Find which house was clicked
+    for (const house of houses) {
+      const transform = transformsRef.current.get(house.id)
+      if (!transform) continue
+
+      const transformedPolygon = transformPolygon(housePolygon, transform)
+      if (pointInPolygon(clickPoint, transformedPolygon)) {
+        if (clickAction === 'ripple') {
+          triggerRipple(house.id)
+        }
+        break
+      }
+    }
+  }
+
   const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     event.preventDefault()
     event.stopPropagation()
@@ -231,6 +353,7 @@ function HouseCanvas() {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onWheel={onWheel}
+      onClick={onClick}
     >
       <canvas
         ref={canvasRef}

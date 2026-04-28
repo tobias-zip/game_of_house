@@ -16,6 +16,9 @@ import {
   type HouseGeometry,
   type HouseNode,
   type Point,
+  type ClickAction,
+  type RippleParams,
+  type PropagatingRipple,
 } from '../types'
 
 type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
@@ -29,6 +32,17 @@ const DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE: SideBehaviorByCoverage = {
   3: 'nothing',
   4: 'die',
   5: 'die',
+}
+
+const DEFAULT_RIPPLE_PARAMS: RippleParams = {
+  // speed is in "houses per second"
+  speed: 40,
+  color: '#ff0000',
+  opacity: 0.5,
+  // range is in graph hops
+  range: 10,
+  // lifetime is per-house (ms)
+  lifetime: 500,
 }
 
 type HouseCanvasProviderProps = {
@@ -55,10 +69,14 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
   const [houses, setHouses] = useState<HouseNode[]>([
     createRootHouse(0),
   ])
+  const [clickAction, setClickAction] = useState<ClickAction>('nothing')
+  const [rippleParams, setRippleParams] = useState<RippleParams>(DEFAULT_RIPPLE_PARAMS)
+  const [propagatingRipples, setPropagatingRipples] = useState<PropagatingRipple[]>([])
 
   const nextHouseIdRef = useRef(1)
   const tickCountRef = useRef(0)
   const simulationWorldStateRef = useRef<SimulationWorldState | undefined>(undefined)
+  const nextRippleIdRef = useRef(0)
 
   const houseGeometry = useMemo<HouseGeometry>(() => {
     const baseUnderside = 120
@@ -102,9 +120,44 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
     }))
   }
 
+  const triggerRipple = (houseId: number) => {
+    const rippleId = `ripple-${nextRippleIdRef.current}`
+    nextRippleIdRef.current += 1
+
+    setPropagatingRipples((current) => [
+      ...current,
+      {
+        id: rippleId,
+        originHouseId: houseId,
+        startTime: Date.now(),
+        params: rippleParams,
+      },
+    ])
+  }
+
   useEffect(() => {
     simulationWorldStateRef.current = undefined
   }, [houseGeometry])
+
+  // Clean up expired ripples periodically.
+  // A ripple is considered expired when it can no longer affect any house:
+  // maxTravelTime (range / speed) + lifetime.
+  useEffect(() => {
+    if (propagatingRipples.length === 0) return
+
+    const intervalId = window.setInterval(() => {
+      const now = Date.now()
+      setPropagatingRipples((current) =>
+        current.filter((ripple) => {
+          const maxTravelMs = (ripple.params.range / Math.max(1, ripple.params.speed)) * 1000
+          const totalDurationMs = maxTravelMs + ripple.params.lifetime
+          return now - ripple.startTime < totalDurationMs
+        })
+      )
+    }, 100) // Check every 100ms
+
+    return () => window.clearInterval(intervalId)
+  }, [propagatingRipples.length])
 
   useEffect(() => {
     if (!isPlaying) return
@@ -169,6 +222,9 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
         fillColor,
         strokeColor,
         houses,
+        clickAction,
+        rippleParams,
+        propagatingRipples,
         setUndersideScale,
         setSideScale,
         setRoofAngle,
@@ -182,6 +238,9 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
         setShowConnectionSideIndicators,
         setSimulationSpeed,
         setSideBehavior,
+        setClickAction,
+        setRippleParams,
+        triggerRipple,
         resetView,
         addHouse,
       }}

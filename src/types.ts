@@ -8,9 +8,11 @@ export type SideIndex = 0 | 1 | 2 | 3 | 4
 export type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
 export type SideBehavior = 'die' | 'nothing' | 'grow'
 export type SideBehaviorByCoverage = Record<CoveredSideCount, SideBehavior>
+export type ClickAction = 'nothing' | 'ripple'
 
 export const COVERED_SIDE_COUNTS: CoveredSideCount[] = [0, 1, 2, 3, 4, 5]
 export const SIDE_BEHAVIOR_OPTIONS: SideBehavior[] = ['die', 'nothing', 'grow']
+export const CLICK_ACTION_OPTIONS: ClickAction[] = ['nothing', 'ripple']
 export const DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE: SideBehaviorByCoverage = {
   0: 'die',
   1: 'grow',
@@ -56,3 +58,17 @@ export type HouseGeometry = {
   roofHeight: number
 }
 
+export type RippleParams = {
+  speed: number
+  color: string
+  opacity: number
+  range: number
+  lifetime: number
+}
+
+export type PropagatingRipple = {
+  id: string
+  originHouseId: number
+  startTime: number
+  params: RippleParams
+}

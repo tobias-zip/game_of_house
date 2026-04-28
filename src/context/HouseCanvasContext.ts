@@ -3,6 +3,9 @@ import type {
   HouseGeometry,
   HouseNode,
   Point,
+  ClickAction,
+  RippleParams,
+  PropagatingRipple,
 } from '../types'
 
 type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
@@ -27,6 +30,9 @@ export type HouseCanvasContextValue = {
   fillColor: string
   strokeColor: string
   houses: HouseNode[]
+  clickAction: ClickAction
+  rippleParams: RippleParams
+  propagatingRipples: PropagatingRipple[]
   setUndersideScale: Dispatch<SetStateAction<number>>
   setSideScale: Dispatch<SetStateAction<number>>
   setRoofAngle: Dispatch<SetStateAction<number>>
@@ -40,6 +46,9 @@ export type HouseCanvasContextValue = {
   setShowConnectionSideIndicators: Dispatch<SetStateAction<boolean>>
   setSimulationSpeed: Dispatch<SetStateAction<number>>
   setSideBehavior: (coveredSides: CoveredSideCount, behavior: SideBehavior) => void
+  setClickAction: Dispatch<SetStateAction<ClickAction>>
+  setRippleParams: Dispatch<SetStateAction<RippleParams>>
+  triggerRipple: (houseId: number) => void
   resetView: () => void
   addHouse: () => void
 }
