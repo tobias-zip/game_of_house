@@ -1,0 +1,32 @@
+.notice {
+    position: absolute;
+    top: 16px;
+    left: calc((100% - var(--sidebar-space, 0px)) / 2);
+    z-index: 2;
+    width: min(400px, calc(100% - 32px));
+    box-sizing: border-box;
+    padding: 14px 16px;
+    transform: translateX(-50%);
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--panel-shadow);
+}
+
+.title {
+    margin: 0 0 4px;
+    font-weight: 600;
+}
+
+.body {
+    margin: 0 0 12px;
+    color: var(--muted);
+    line-height: 1.4;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+}

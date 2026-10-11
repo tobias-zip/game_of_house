@@ -1,24 +1,24 @@
 {
-  "name": "game_of_house",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "typecheck": "tsc -b",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
-  },
-  "devDependencies": {
-    "@types/node": "^24.12.2",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.9"
-  }
+    "name": "game_of_house",
+    "private": true,
+    "type": "module",
+    "packageManager": "pnpm@12.11.2",
+    "engines": {
+        "node": ">=24"
+    },
+    "scripts": {
+        "dev": "pnpm -r --parallel --if-present dev",
+        "build": "pnpm -r --if-present build",
+        "lint": "biome check .",
+        "format": "biome check --write .",
+        "typecheck": "pnpm -r --if-present typecheck",
+        "test": "vitest run --passWithNoTests",
+        "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+        "preview": "pnpm --filter @game_of_house/client preview"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.5.15",
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.3"
+    }
 }

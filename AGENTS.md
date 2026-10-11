@@ -1,6 +1,11 @@
 # Project instructions
 
+<!-- Sections marked "project-specific" are written per project. All other sections
+come from project-defaults and are kept in sync with it; change them there first. -->
+
 ## Project overview and setup
+
+<!-- project-specific -->
 
 - Purpose: A cellular-automaton toy in the browser. Pentagon-shaped "houses" (an
   underside, two walls, two roof sides) snap together edge to edge and grow, survive or
@@ -34,44 +39,45 @@
     rules (presets, Random, rule table, overlap, add house, reset world), shape (with
     preview), click action, appearance (theme, color by connected sides, colors), share
     link and debug. Below 700px width the panel becomes a bottom sheet.
-- Frontend: React 19 + TypeScript with CSS Modules, built with Vite. App state lives
+- Frontend: React + TypeScript with CSS Modules, built with Vite. App state lives
   in a React context (`HouseCanvasProvider`), which runs the tick loop with
   `setInterval`. The simulation runs outside React state updaters (StrictMode calls
   those twice) and publishes each new world. `HouseCanvas.tsx` draws with a
   `requestAnimationFrame` loop that reads camera, ripples and the latest world from refs,
   so panning, zooming and ripples never re-render React.
-- Runtime and package manager: Node.js 24, npm, TypeScript 6 (`strict` mode).
+- Runtime and package manager: Node.js, pnpm workspaces (only `client/`),
+  TypeScript. Versions live in `package.json` and `.nvmrc` only.
 - Deployment: GitHub Pages via `.github/workflows/deploy.yml` on every push to `main`.
-  Vite builds with `base: '/game_of_house'`.
-- Environment setup: `npm install`.
-- Repository map:
-  - `src/types.ts` — shared types and rule constants (houses, sides, geometry, rule
+  Vite builds with `base: "/game_of_house"`; the workflow uploads `client/dist`.
+- Environment setup: `pnpm install`.
+- Repository map (the app lives in `client/`):
+  - `client/src/types.ts` — shared types and rule constants (houses, sides, geometry, rule
     table and its defaults, ripple settings).
-  - `src/rules.ts` — rule table encoding, presets and random rules.
-  - `src/shareLink.ts` — reading and writing the setup in the URL hash.
-  - `src/theme.ts` — theme names, house colors per theme, stored theme choice. UI colors
-    are CSS variables in `src/index.css` per `data-theme`.
-  - `src/domain/house/` — house model without simulation state: `geometry.ts`
+  - `client/src/rules.ts` — rule table encoding, presets and random rules.
+  - `client/src/shareLink.ts` — reading and writing the setup in the URL hash.
+  - `client/src/theme.ts` — theme names, house colors per theme, stored theme choice. UI colors
+    are CSS variables in `client/src/index.css` per `data-theme`.
+  - `client/src/domain/house/` — house model without simulation state: `geometry.ts`
     (polygons, transforms, overlap tests), `graph.ts` (sides, connections).
-  - `src/engine/simulation/` — `runTick.ts` (one tick: rule application, removal,
+  - `client/src/engine/simulation/` — `runTick.ts` (one tick: rule application, removal,
     growth), `growFromHost.ts` (placing a house on a free side of a host),
     `addRandomHouse.ts` (manual "Add house"), `worldState.ts` (cached world
     transforms and polygons, spatial index, blocked hosts), `profiling.ts` (debug
     timings), `types.ts`. Tick and growth code mutate houses they copied for the
     current tick and update the world state in place.
-  - `src/engine/actions/` — click actions; `ripple.ts` computes ripple propagation.
-  - `src/context/` — `HouseCanvasProvider.tsx` owns app state and the tick loop;
+  - `client/src/engine/actions/` — click actions; `ripple.ts` computes ripple propagation.
+  - `client/src/context/` — `HouseCanvasProvider.tsx` owns app state and the tick loop;
     `useHouseCanvas.ts` reads it.
-  - `src/components/` — `HouseCanvas.tsx` (draw loop, pointer and wheel input, ripples,
+  - `client/src/components/` — `HouseCanvas.tsx` (draw loop, pointer and wheel input, ripples,
     view buttons), `camera.ts` (pan/zoom math), `drawWorld.ts` (batched canvas drawing
     with viewport culling), `PlayBar.tsx`, `OverloadNotice.tsx`, `Sidebar.tsx`
     (settings panel). `App.tsx` lays out the overlays and the title.
-  - `public/` — static assets (favicon).
+  - `client/public/` — static assets (favicon).
 - Rule and design requirements are supplied per task. Do not invent new rules,
   click actions or house shapes; ask.
 
 Before editing, inspect the relevant code, scripts, configuration, and repository
-instructions. Use npm and the existing tooling. Do not add or replace dependencies,
+instructions. Use pnpm and the existing tooling. Do not add or replace dependencies,
 frameworks, or development tools without a concrete need for the requested task.
 Prefer existing utilities and platform capabilities. Keep credentials out of source
 code and committed configuration.
@@ -82,16 +88,17 @@ Run all commands from the repository root.
 
 | Action | Command |
 | --- | --- |
-| Install dependencies | `npm install` |
-| Start dev server (Vite, port 5173) | `npm run dev` |
-| Type-check | `npm run typecheck` |
-| Build (type-check + Vite build into `dist/`) | `npm run build` |
-| Preview production build | `npm run preview` |
-| Lint | Not set up yet |
-| Check formatting | Not set up yet |
-| Run automated tests | Not set up yet |
+| Install dependencies | `pnpm install` |
+| Start the dev server | `pnpm dev` |
+| Preview the production build | `pnpm build && pnpm preview` |
+| Lint and check formatting | `pnpm lint` |
+| Format and apply safe lint fixes | `pnpm format` |
+| Type-check all workspaces | `pnpm typecheck` |
+| Run tests | `pnpm test` |
+| Build | `pnpm build` |
+| Run every check (same as CI) | `pnpm check` |
 
-Never invent missing commands. When tooling is added, update this table. Report
+Never invent missing commands. When tooling changes, update this table. Report
 checks that cannot be run and explain why.
 
 ## Clarification and scope
@@ -100,7 +107,7 @@ checks that cannot be run and explain why.
 - If a requirement is ambiguous or several reasonable interpretations exist, ask
   before implementing. Don't silently pick one.
 - Ask about choices that are hard to undo or that change what gets built:
-  architecture, libraries, data models, simulation rules, file layout.
+  architecture, libraries, data models, game rules, file layout.
 - Don't ask about trivial things that have an obvious conventional default. Pick it
   and mention it.
 - When you ask, offer 2–4 concrete options and say which one you recommend.
@@ -127,7 +134,7 @@ checks that cannot be run and explain why.
   currently look alike. Rework an abstraction when it accumulates unrelated flags,
   special cases, or dependencies.
 - **Use clear names:** Names should communicate purpose, meaning, and relevant units.
-  Prefer `delayInMs` over `t1` with a comment, and `house` and `houses` over `h` and `hs`.
+  Prefer `delayInMs` over `t1` with a comment, and `row` and `grid` over `r` and `g`.
   Use enough words to be unambiguous without adding redundant context.
 - **Make code understandable:** Let naming and structure explain routine behavior.
   Add comments for non-obvious intent, constraints, tradeoffs, or algorithms; do not
@@ -139,10 +146,12 @@ checks that cannot be run and explain why.
 
 ## Simulation code
 
-- Keep simulation logic (`src/domain/`, `src/engine/`) independent of React and
+<!-- project-specific -->
+
+- Keep simulation logic (`client/src/domain/`, `client/src/engine/`) independent of React and
   rendering, so it can run headless and be tested.
 - Keep each rule in one authoritative place; do not duplicate it between the
-  simulation and the UI. Shared types and rule defaults live in `src/types.ts`.
+  simulation and the UI. Shared types and rule defaults live in `client/src/types.ts`.
 - Keep tunable numbers (geometry, ripple defaults, placement attempts) in clearly
   named values rather than scattered literals.
 
@@ -166,15 +175,16 @@ checks that cannot be run and explain why.
 
 - Organize files so a developer can find a feature and understand its behavior
   without searching across unrelated directories.
-- Keep feature-specific code close together. Put code in shared locations only
+- Keep feature-specific code close together. Put code in shared directories only
   when it is genuinely shared. Avoid miscellaneous dumping grounds such as oversized
   `utils` modules.
 - Split files when the boundary improves understanding, ownership, reuse, or
   testability. Do not split solely to satisfy an arbitrary line count.
 - Keep related behavior easy to discover and dependencies easy to trace. Avoid
   excessive indirection and chains of trivial wrapper modules.
-- Ask before adding a new top-level directory under `src/`, and keep the repository
-  map above up to date.
+- Put code in the workspace that runs it (`client/`, `server/`); move it to `shared/`
+  only when both sides need it. Ask before adding a new workspace, and keep the
+  repository map above up to date.
 
 ## Frontend — React and TypeScript
 
@@ -198,7 +208,7 @@ checks that cannot be run and explain why.
 - Use CSS Modules for component-specific styles. A component named `Example.tsx`
   may have one colocated stylesheet named `Example.module.css`.
 - Create the stylesheet only when styles are needed. Import it with
-  `import styles from './Example.module.css'`.
+  `import styles from "./Example.module.css";`.
 - Do not create ordinary `.css` files for components. Put global styles only in
   `src/index.css`, limited to resets, fonts, shared CSS variables, and base element styles.
 - Do not use global selectors for component-specific styling.
@@ -216,25 +226,29 @@ checks that cannot be run and explain why.
 
 - React component files use PascalCase: `App.tsx`, `MyComponent.tsx`.
 - CSS Modules match the component name: `App.module.css`, `MyComponent.module.css`.
-- Hooks and other TypeScript modules use camelCase: `useHouseCanvas.ts`,
-  `runTick.ts`. Do not use snake_case in frontend filenames.
+- Hooks and other TypeScript modules use camelCase: `useAuth.ts`, `formatDate.ts`,
+  `apiClient.ts`. Do not use snake_case in frontend filenames.
+- Tests sit next to the code they test and end in `.test.ts`: `grid.ts` and
+  `grid.test.ts`.
 
 ## Formatting and static checks
 
-- Treat the configured type checker as the authority for mechanical rules. Use
-  project commands and configuration rather than hand-formatting to personal
-  preference. Match the existing style: single quotes, no semicolons.
-- No formatter or linter is configured. Ask before adding one; do not introduce
-  competing configurations.
+- Biome (`biome.json`) is the formatter and linter; TypeScript is the type checker.
+  They are the authority for mechanical rules. Do not hand-format to personal
+  preference.
+- A Claude Code hook formats each file after it is edited. Run `pnpm format` before
+  finishing to apply safe lint fixes and sort imports.
 - Do not disable rules, weaken types, or add suppression comments merely to make
   checks pass. Address the cause; explain a narrowly scoped exception when necessary.
-- Limit formatting changes to the relevant files or changed code where tooling allows.
+- Do not add other formatters or linters.
 
 ## Testing policy
 
-**Selected policy: Minimal tests for stable core logic.**
+**Selected policy: Minimal Vitest tests for stable core logic.**
 
-- Keep the test setup minimal. No test runner is installed yet; ask before adding one.
+<!-- project-specific: list the project's stable core logic in the second bullet. -->
+
+- Tests use Vitest. There is no browser test setup; ask before adding Playwright.
 - Test only core logic that is unlikely to change soon, such as side compatibility and
   connections, house placement and overlap detection, rule application per tick, and
   ripple propagation.
@@ -244,18 +258,25 @@ checks that cannot be run and explain why.
   to the risk of the change.
 - Update tests affected by intentional behavior changes. Do not weaken assertions or
   delete failing tests to conceal a regression.
-- A passing build does not establish that interactions, styling, or the simulation
-  look and feel correct; inspect affected behavior directly when possible.
+- A passing build does not establish that interactions, styling, or the game look
+  and feel correct; inspect affected behavior directly when possible.
 
 ## Before completing changes
 
 - Review the diff for scope, unnecessary additions, obsolete code, and accidental
   behavior changes. Check that cleanup is complete within the modified area.
-- Run `npm run typecheck` and any other configured checks and tests that are relevant.
-  Run `npm run build` when dependencies or build configuration change.
+- Run `pnpm format`, then `pnpm check`. It runs lint, type checks, tests, and the
+  build, the same as CI.
 - Verify affected behavior manually where automated checks cannot establish correctness.
 - Fix failures introduced by the change. Report unrelated existing failures separately.
 - Update documentation (`README.md`, this file) when setup, commands, structure, or
-  simulation rules change.
+  game design changes. Do not repeat what config files already say, such as
+  dependency versions.
 - Summarize what changed, what was removed or simplified when relevant, what was
   verified, and any remaining limitations. Never claim a check ran when it did not.
+
+## Deviations from project defaults
+
+<!-- project-specific: maintained by the sync-defaults skill. -->
+
+None.
