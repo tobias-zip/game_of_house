@@ -1,24 +1,24 @@
 {
-  "name": "game_of_house",
-  "private": true,
-  "type": "module",
-  "packageManager": "pnpm@12.11.2",
-  "engines": {
-    "node": ">=24"
-  },
-  "scripts": {
-    "dev": "pnpm -r --parallel --if-present dev",
-    "build": "pnpm -r --if-present build",
-    "lint": "biome check .",
-    "format": "biome check --write .",
-    "typecheck": "pnpm -r --if-present typecheck",
-    "test": "vitest run --passWithNoTests",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "preview": "pnpm --filter @game_of_house/client preview"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.3"
-  }
+    "name": "game_of_house",
+    "private": true,
+    "type": "module",
+    "packageManager": "pnpm@12.11.2",
+    "engines": {
+        "node": ">=24"
+    },
+    "scripts": {
+        "dev": "pnpm -r --parallel --if-present dev",
+        "build": "pnpm -r --if-present build",
+        "lint": "biome check .",
+        "format": "biome check --write .",
+        "typecheck": "pnpm -r --if-present typecheck",
+        "test": "vitest run --passWithNoTests",
+        "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+        "preview": "pnpm --filter @game_of_house/client preview"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.5.15",
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.3"
+    }
 }

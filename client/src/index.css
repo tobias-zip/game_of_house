@@ -1,110 +1,110 @@
 /* Theme tokens; the theme name comes from theme.ts via `data-theme` on <html>. */
 :root,
-:root[data-theme='night'] {
-  color-scheme: dark;
-  --canvas-bg: #101418;
-  --text: #e6e1d6;
-  --muted: #8d949e;
-  --accent: #e8b86b;
-  --accent-contrast: #1a1408;
-  --panel-bg: rgb(23 28 35 / 82%);
-  --panel-border: rgb(255 255 255 / 9%);
-  --panel-shadow: 0 8px 32px rgb(0 0 0 / 35%);
-  --control-bg: rgb(255 255 255 / 6%);
-  --control-hover: rgb(255 255 255 / 12%);
-  --control-border: rgb(255 255 255 / 12%);
+:root[data-theme="night"] {
+    color-scheme: dark;
+    --canvas-bg: #101418;
+    --text: #e6e1d6;
+    --muted: #8d949e;
+    --accent: #e8b86b;
+    --accent-contrast: #1a1408;
+    --panel-bg: rgb(23 28 35 / 82%);
+    --panel-border: rgb(255 255 255 / 9%);
+    --panel-shadow: 0 8px 32px rgb(0 0 0 / 35%);
+    --control-bg: rgb(255 255 255 / 6%);
+    --control-hover: rgb(255 255 255 / 12%);
+    --control-border: rgb(255 255 255 / 12%);
 }
 
-:root[data-theme='classic'] {
-  color-scheme: light;
-  --canvas-bg: #ffffff;
-  --text: #1b1b1b;
-  --muted: #666666;
-  --accent: #2f6fd6;
-  --accent-contrast: #ffffff;
-  --panel-bg: rgb(250 250 250 / 92%);
-  --panel-border: rgb(0 0 0 / 12%);
-  --panel-shadow: 0 6px 24px rgb(0 0 0 / 12%);
-  --control-bg: #ffffff;
-  --control-hover: #f0f0f0;
-  --control-border: rgb(0 0 0 / 20%);
+:root[data-theme="classic"] {
+    color-scheme: light;
+    --canvas-bg: #ffffff;
+    --text: #1b1b1b;
+    --muted: #666666;
+    --accent: #2f6fd6;
+    --accent-contrast: #ffffff;
+    --panel-bg: rgb(250 250 250 / 92%);
+    --panel-border: rgb(0 0 0 / 12%);
+    --panel-shadow: 0 6px 24px rgb(0 0 0 / 12%);
+    --control-bg: #ffffff;
+    --control-hover: #f0f0f0;
+    --control-border: rgb(0 0 0 / 20%);
 }
 
 html,
 body,
 #root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  overflow: hidden;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
 }
 
 body {
-  background: var(--canvas-bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13px;
-  accent-color: var(--accent);
+    background: var(--canvas-bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    accent-color: var(--accent);
 }
 
 button,
 select,
 input {
-  font: inherit;
-  color: inherit;
+    font: inherit;
+    color: inherit;
 }
 
 button,
 select {
-  padding: 5px 10px;
-  border: 1px solid var(--control-border);
-  border-radius: 6px;
-  background: var(--control-bg);
+    padding: 5px 10px;
+    border: 1px solid var(--control-border);
+    border-radius: 6px;
+    background: var(--control-bg);
 }
 
 button {
-  cursor: pointer;
+    cursor: pointer;
 }
 
 button:hover,
 select:hover {
-  background: var(--control-hover);
+    background: var(--control-hover);
 }
 
-button[data-variant='primary'] {
-  border-color: transparent;
-  background: var(--accent);
-  color: var(--accent-contrast);
+button[data-variant="primary"] {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--accent-contrast);
 }
 
-button[data-variant='primary']:hover {
-  filter: brightness(1.08);
+button[data-variant="primary"]:hover {
+    filter: brightness(1.08);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 /* Larger touch targets; 16px text also stops iOS from zooming into focused fields. */
 @media (pointer: coarse) {
-  button,
-  select,
-  input {
-    font-size: 16px;
-  }
+    button,
+    select,
+    input {
+        font-size: 16px;
+    }
 
-  button,
-  select {
-    min-height: 44px;
-  }
+    button,
+    select {
+        min-height: 44px;
+    }
 
-  input[type='range'] {
-    height: 32px;
-  }
+    input[type="range"] {
+        height: 32px;
+    }
 
-  input[type='checkbox'] {
-    width: 22px;
-    height: 22px;
-  }
+    input[type="checkbox"] {
+        width: 22px;
+        height: 22px;
+    }
 }

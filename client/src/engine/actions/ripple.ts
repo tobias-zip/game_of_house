@@ -1,56 +1,56 @@
-import type { HouseNode, RippleParams } from '../../types'
+import type { HouseNode, RippleParams } from "../../types";
 
 export type RippleEffect = {
-  houseId: number
-  distance: number
-}
+    houseId: number;
+    distance: number;
+};
 
 /**
  * Computes which houses are affected by a ripple.
  * Uses BFS to find all reachable houses and calculates their distance from origin.
  */
 export function computeRippleEffect(
-  houses: HouseNode[],
-  originHouseId: number,
-  range: number
+    houses: HouseNode[],
+    originHouseId: number,
+    range: number,
 ): RippleEffect[] {
-  const houseById = new Map<number, HouseNode>()
-  for (const house of houses) houseById.set(house.id, house)
+    const houseById = new Map<number, HouseNode>();
+    for (const house of houses) houseById.set(house.id, house);
 
-  if (!houseById.has(originHouseId)) return []
+    if (!houseById.has(originHouseId)) return [];
 
-  const affectedHouses: RippleEffect[] = []
-  const visited = new Set<number>()
-  const queue: Array<[houseId: number, distance: number]> = [[originHouseId, 0]]
-  let queueIndex = 0
+    const affectedHouses: RippleEffect[] = [];
+    const visited = new Set<number>();
+    const queue: Array<[houseId: number, distance: number]> = [[originHouseId, 0]];
+    let queueIndex = 0;
 
-  while (queueIndex < queue.length) {
-    const [currentHouseId, currentDistance] = queue[queueIndex]!
-    queueIndex += 1
-    if (visited.has(currentHouseId)) continue
-    visited.add(currentHouseId)
+    while (queueIndex < queue.length) {
+        const [currentHouseId, currentDistance] = queue[queueIndex]!;
+        queueIndex += 1;
+        if (visited.has(currentHouseId)) continue;
+        visited.add(currentHouseId);
 
-    if (currentDistance <= range) {
-      affectedHouses.push({
-        houseId: currentHouseId,
-        distance: currentDistance,
-      })
+        if (currentDistance <= range) {
+            affectedHouses.push({
+                houseId: currentHouseId,
+                distance: currentDistance,
+            });
+        }
+
+        // Find connected houses
+        const currentHouse = houseById.get(currentHouseId);
+        if (!currentHouse) continue;
+
+        for (const connection of currentHouse.sides) {
+            if (!connection) continue;
+            const nextDistance = currentDistance + 1; // Each connection is 1 unit
+            if (nextDistance <= range && !visited.has(connection.houseId)) {
+                queue.push([connection.houseId, nextDistance]);
+            }
+        }
     }
 
-    // Find connected houses
-    const currentHouse = houseById.get(currentHouseId)
-    if (!currentHouse) continue
-
-    for (const connection of currentHouse.sides) {
-      if (!connection) continue
-      const nextDistance = currentDistance + 1 // Each connection is 1 unit
-      if (nextDistance <= range && !visited.has(connection.houseId)) {
-        queue.push([connection.houseId, nextDistance])
-      }
-    }
-  }
-
-  return affectedHouses
+    return affectedHouses;
 }
 
 /**
@@ -58,8 +58,8 @@ export function computeRippleEffect(
  * `speed` is interpreted as "houses per second".
  */
 export function rippleReachDelayMs(distance: number, speed: number): number {
-  const safeSpeed = Math.max(0.0001, speed)
-  return (distance / safeSpeed) * 1000
+    const safeSpeed = Math.max(0.0001, speed);
+    return (distance / safeSpeed) * 1000;
 }
 
 /**
@@ -67,5 +67,5 @@ export function rippleReachDelayMs(distance: number, speed: number): number {
  * travel time to its maximum range plus the per-house lifetime.
  */
 export function rippleDurationMs(params: RippleParams): number {
-  return rippleReachDelayMs(params.range, params.speed) + params.lifetime
+    return rippleReachDelayMs(params.range, params.speed) + params.lifetime;
 }
