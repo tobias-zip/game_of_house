@@ -1,6 +1,7 @@
 import type {
     HouseGeometry,
     HouseNode,
+    HousePolygon,
     Point,
     Polygon,
     Segment,
@@ -38,7 +39,7 @@ export const applyTransform = (transform: Transform, point: Point): Point => ({
     y: transform.b * point.x + transform.d * point.y + transform.f,
 });
 
-export const getHousePolygon = (geometry: HouseGeometry): Polygon => {
+export const getHousePolygon = (geometry: HouseGeometry): HousePolygon => {
     const halfUnderside = geometry.undersideLength / 2;
     const topY = HOUSE_TOP_Y;
     const bottomY = topY + geometry.sideLength;
@@ -63,10 +64,13 @@ export const transformPolygon = (polygon: Polygon, transform: Transform): Polygo
 export const pointInPolygon = (point: Point, polygon: Polygon): boolean => {
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        const xi = polygon[i].x;
-        const yi = polygon[i].y;
-        const xj = polygon[j].x;
-        const yj = polygon[j].y;
+        const current = polygon[i];
+        const previous = polygon[j];
+        if (!current || !previous) continue;
+        const xi = current.x;
+        const yi = current.y;
+        const xj = previous.x;
+        const yj = previous.y;
 
         const intersect =
             yi > point.y !== yj > point.y &&
@@ -83,6 +87,7 @@ const hasSeparatingEdgeNormal = (polygon: Polygon, other: Polygon) => {
     for (let index = 0; index < polygon.length; index += 1) {
         const start = polygon[index];
         const end = polygon[(index + 1) % polygon.length];
+        if (!start || !end) continue;
         const normalX = start.y - end.y;
         const normalY = end.x - start.x;
         const length = Math.hypot(normalX, normalY);

@@ -22,11 +22,10 @@ export function computeRippleEffect(
     const affectedHouses: RippleEffect[] = [];
     const visited = new Set<number>();
     const queue: Array<[houseId: number, distance: number]> = [[originHouseId, 0]];
-    let queueIndex = 0;
 
-    while (queueIndex < queue.length) {
-        const [currentHouseId, currentDistance] = queue[queueIndex]!;
-        queueIndex += 1;
+    // Iterating also visits the entries pushed during the loop, which makes this a
+    // breadth-first search.
+    for (const [currentHouseId, currentDistance] of queue) {
         if (visited.has(currentHouseId)) continue;
         visited.add(currentHouseId);
 

@@ -51,6 +51,8 @@ export type Segment = {
 };
 
 export type Polygon = Point[];
+// The five corners of a house, starting at the left end of the underside.
+export type HousePolygon = [Point, Point, Point, Point, Point];
 
 export type HouseGeometry = {
     undersideLength: number;

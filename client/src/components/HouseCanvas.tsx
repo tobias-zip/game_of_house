@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useHouseCanvas } from "../context/useHouseCanvas";
 import { pointInPolygon } from "../domain/house/geometry";
 import { rippleDurationMs } from "../engine/actions/ripple";
@@ -81,10 +81,10 @@ function HouseCanvas() {
         showConnectionSideIndicators,
     ]);
 
-    const setCamera = (camera: Camera) => {
+    const setCamera = useCallback((camera: Camera) => {
         cameraRef.current = camera;
         needsDrawRef.current = true;
-    };
+    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -168,7 +168,7 @@ function HouseCanvas() {
 
         canvas.addEventListener("wheel", onWheel, { passive: false });
         return () => canvas.removeEventListener("wheel", onWheel);
-    }, []);
+    }, [setCamera]);
 
     const getCanvasPoint = (event: React.PointerEvent<HTMLCanvasElement>): Point => {
         const rect = event.currentTarget.getBoundingClientRect();
@@ -239,6 +239,7 @@ function HouseCanvas() {
         const [first, second] = [...pointers.values()];
         pointers.set(event.pointerId, point);
         const [nextFirst, nextSecond] = [...pointers.values()];
+        if (!first || !second || !nextFirst || !nextSecond) return;
 
         const previousMidpoint = getMidpoint(first, second);
         const nextMidpoint = getMidpoint(nextFirst, nextSecond);

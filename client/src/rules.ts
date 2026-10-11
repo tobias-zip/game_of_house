@@ -1,3 +1,4 @@
+import { randomItem } from "./domain/house/geometry";
 import {
     COVERED_SIDE_COUNTS,
     SIDE_BEHAVIOR_OPTIONS,
@@ -7,15 +8,28 @@ import {
 
 // Rule tables written as one letter per covered-side count 0–5: d(ie), n(othing), g(row).
 const LETTER_BY_BEHAVIOR: Record<SideBehavior, string> = { die: "d", nothing: "n", grow: "g" };
-const BEHAVIOR_BY_LETTER: Record<string, SideBehavior> = { d: "die", n: "nothing", g: "grow" };
+type BehaviorLetter = "d" | "n" | "g";
+const BEHAVIOR_BY_LETTER: Record<BehaviorLetter, SideBehavior> = {
+    d: "die",
+    n: "nothing",
+    g: "grow",
+};
 
 export const encodeRules = (rules: SideBehaviorByCoverage) =>
     COVERED_SIDE_COUNTS.map((count) => LETTER_BY_BEHAVIOR[rules[count]]).join("");
 
 export const decodeRules = (code: string): SideBehaviorByCoverage | null => {
     if (!/^[dng]{6}$/.test(code)) return null;
-    const [r0, r1, r2, r3, r4, r5] = [...code].map((letter) => BEHAVIOR_BY_LETTER[letter]);
-    return { 0: r0, 1: r1, 2: r2, 3: r3, 4: r4, 5: r5 };
+    // The pattern above guarantees one valid letter per count.
+    const behaviorAt = (count: number) => BEHAVIOR_BY_LETTER[code[count] as BehaviorLetter];
+    return {
+        0: behaviorAt(0),
+        1: behaviorAt(1),
+        2: behaviorAt(2),
+        3: behaviorAt(3),
+        4: behaviorAt(4),
+        5: behaviorAt(5),
+    };
 };
 
 export type RulePreset = {
@@ -26,7 +40,7 @@ export type RulePreset = {
 
 // Picked from a sweep of all rule tables starting from one house with the default shape.
 // Every preset grows a lone house (0 → grow), otherwise a fresh world does nothing.
-export const RULE_PRESETS: RulePreset[] = [
+export const RULE_PRESETS: [RulePreset, ...RulePreset[]] = [
     { name: "Slow bloom", description: "Grows steadily outwards.", code: "ggnggn" },
     { name: "Crystal", description: "Grows briefly, then freezes.", code: "ggngnn" },
     { name: "Lace", description: "Houses with 3 or 5 neighbours die.", code: "ggndgd" },
@@ -36,13 +50,17 @@ export const RULE_PRESETS: RulePreset[] = [
 
 export const DEFAULT_RULE_PRESET = RULE_PRESETS[0];
 
+const defaultRules = decodeRules(DEFAULT_RULE_PRESET.code);
+if (!defaultRules)
+    throw new Error(`Preset "${DEFAULT_RULE_PRESET.name}" has an invalid rule code.`);
+export const DEFAULT_RULES: SideBehaviorByCoverage = defaultRules;
+
 export const findPresetForRules = (rules: SideBehaviorByCoverage) =>
     RULE_PRESETS.find((preset) => preset.code === encodeRules(rules)) ?? null;
 
 // A lone house must grow or a fresh world never changes, so only counts 1–5 are random.
 export const createRandomRules = (): SideBehaviorByCoverage => {
-    const randomBehavior = () =>
-        SIDE_BEHAVIOR_OPTIONS[Math.floor(Math.random() * SIDE_BEHAVIOR_OPTIONS.length)];
+    const randomBehavior = () => randomItem(SIDE_BEHAVIOR_OPTIONS) ?? "nothing";
     return {
         0: "grow",
         1: randomBehavior(),

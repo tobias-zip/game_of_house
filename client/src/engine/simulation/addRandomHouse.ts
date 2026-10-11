@@ -30,13 +30,13 @@ export const addRandomHouse = ({
         return [createRootHouse(newHouseId)];
     }
 
-    const hosts = houses.filter((house) => getFreeSides(house).length > 0);
-    if (hosts.length === 0) return null;
+    const host = randomItem(houses.filter((house) => getFreeSides(house).length > 0));
+    if (!host) return null;
 
     const houseById = copyHouses(houses);
     const grown = tryGrowFromHost({
         houseById,
-        hostHouseId: randomItem(hosts).id,
+        hostHouseId: host.id,
         houseGeometry,
         allowOverlap,
         newHouseId,

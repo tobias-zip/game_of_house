@@ -1,10 +1,10 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRootHouse } from "../domain/house/graph";
 import { addRandomHouse } from "../engine/simulation/addRandomHouse";
 import { runSimulationTick } from "../engine/simulation/runTick";
 import type { SimulationWorld } from "../engine/simulation/types";
 import { buildWorldState } from "../engine/simulation/worldState";
-import { DEFAULT_RULE_PRESET, decodeRules } from "../rules";
+import { DEFAULT_RULES } from "../rules";
 import { formatSharedSetup, parseSharedSetup } from "../shareLink";
 import { loadThemeName, saveThemeName, THEMES, type ThemeName } from "../theme";
 import type {
@@ -54,7 +54,7 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
     const [roofAngle, setRoofAngle] = useState(sharedSetup.roofAngle ?? 80);
     const [allowOverlap, setAllowOverlap] = useState(sharedSetup.allowOverlap ?? false);
     const [sideBehaviorByCoverage, setSideBehaviorByCoverage] = useState<SideBehaviorByCoverage>(
-        () => sharedSetup.rules ?? decodeRules(DEFAULT_RULE_PRESET.code)!,
+        () => sharedSetup.rules ?? DEFAULT_RULES,
     );
     const [isPlaying, setIsPlaying] = useState(true);
     const [simulationSpeed, setSimulationSpeed] = useState(DEFAULT_SIMULATION_SPEED);
@@ -91,10 +91,10 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
     const slowTickStreakRef = useRef(0);
     const overloadGuardEnabledRef = useRef(true);
 
-    const publishWorld = (nextWorld: SimulationWorld) => {
+    const publishWorld = useCallback((nextWorld: SimulationWorld) => {
         worldRef.current = nextWorld;
         setWorld(nextWorld);
-    };
+    }, []);
 
     const advanceTick = () => {
         const tickStart = performance.now();
@@ -200,8 +200,11 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
     useEffect(() => {
         const { houses } = worldRef.current;
         publishWorld({ houses, worldState: buildWorldState({ houses, houseGeometry }) });
-    }, [houseGeometry]);
+    }, [houseGeometry, publishWorld]);
 
+    // advanceTick is recreated on every render, so the dependencies list the values it
+    // reads instead; depending on advanceTick would restart the interval on every render.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: see above.
     useEffect(() => {
         if (!isPlaying) return;
 

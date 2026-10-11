@@ -111,9 +111,11 @@ const connectNearbyHouseSides = ({
 const shuffleInPlace = <T>(items: T[]) => {
     for (let index = items.length - 1; index > 0; index -= 1) {
         const swapIndex = Math.floor(Math.random() * (index + 1));
-        const tmp = items[index];
-        items[index] = items[swapIndex];
-        items[swapIndex] = tmp;
+        const item = items[index];
+        const swapItem = items[swapIndex];
+        if (item === undefined || swapItem === undefined) continue;
+        items[index] = swapItem;
+        items[swapIndex] = item;
     }
 };
 

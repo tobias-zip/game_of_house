@@ -56,9 +56,11 @@ const countConnectedSides = (house: HouseNode) => {
 };
 
 const addPolygonToPath = (path: Path2D, polygon: Polygon) => {
-    path.moveTo(polygon[0].x, polygon[0].y);
-    for (let index = 1; index < polygon.length; index += 1) {
-        path.lineTo(polygon[index].x, polygon[index].y);
+    for (let index = 0; index < polygon.length; index += 1) {
+        const point = polygon[index];
+        if (!point) continue;
+        if (index === 0) path.moveTo(point.x, point.y);
+        else path.lineTo(point.x, point.y);
     }
     path.closePath();
 };
@@ -117,7 +119,8 @@ const getConnectedSideTriangles = (houseGeometry: HouseGeometry) => {
     return housePolygon.map((start, sideIndex) =>
         getConnectedSideTriangle(
             start,
-            housePolygon[(sideIndex + 1) % housePolygon.length],
+            // The last side ends where the first one starts.
+            housePolygon[sideIndex + 1] ?? housePolygon[0],
             centroid,
         ),
     );
@@ -146,22 +149,25 @@ export const drawWorld = ({
     ctx.setTransform(scale, 0, 0, scale, origin.x * devicePixelRatio, origin.y * devicePixelRatio);
 
     const visibleBounds = getVisibleWorldBounds(camera, size);
-    const visibleHouses = world.houses.filter((house) => {
+    const visibleHouses = world.houses.flatMap((house) => {
         const worldData = world.worldState.byHouseId.get(house.id);
-        return worldData !== undefined && boundsOverlap(worldData.bounds, visibleBounds);
+        return worldData && boundsOverlap(worldData.bounds, visibleBounds)
+            ? [{ house, worldData }]
+            : [];
     });
 
     // One path per fill color: a single color, or one per connected-side count.
     const fillPaths = (coveredSidesPalette ?? [fillColor]).map(() => new Path2D());
     const outlinePath = new Path2D();
-    for (const house of visibleHouses) {
-        const { polygon } = world.worldState.byHouseId.get(house.id)!;
+    for (const { house, worldData } of visibleHouses) {
+        const { polygon } = worldData;
         const fillIndex = coveredSidesPalette ? countConnectedSides(house) : 0;
-        addPolygonToPath(fillPaths[fillIndex], polygon);
+        const fillPath = fillPaths[fillIndex];
+        if (fillPath) addPolygonToPath(fillPath, polygon);
         addPolygonToPath(outlinePath, polygon);
     }
     fillPaths.forEach((path, index) => {
-        ctx.fillStyle = coveredSidesPalette ? coveredSidesPalette[index] : fillColor;
+        ctx.fillStyle = coveredSidesPalette?.[index] ?? fillColor;
         ctx.fill(path);
     });
     ctx.strokeStyle = strokeColor;
@@ -198,8 +204,8 @@ export const drawWorld = ({
         const triangles = getConnectedSideTriangles(houseGeometry);
         const indicatorsPath = new Path2D();
 
-        for (const house of visibleHouses) {
-            const { transform } = world.worldState.byHouseId.get(house.id)!;
+        for (const { house, worldData } of visibleHouses) {
+            const { transform } = worldData;
             house.sides.forEach((connection, sideIndex) => {
                 const triangle = triangles[sideIndex];
                 if (!connection || !triangle) return;
