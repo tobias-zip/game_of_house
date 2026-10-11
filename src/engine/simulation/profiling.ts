@@ -1,7 +1,6 @@
 export type GrowTimingStats = {
   hostLookupMs: number
   freeSidesMs: number
-  computeTransformsMs: number
   candidateBuildMs: number
   parentTransformLookupMs: number
   attemptsLoopMs: number
@@ -30,7 +29,6 @@ export type SimulationTickProfile = {
     growSuccesses: number
   }
   timeStats: {
-    computeTransformsMs: number
     classifyMs: number
     cleanupFilterMs: number
     survivorIdsBuildMs: number
@@ -53,7 +51,6 @@ export type SimulationTickProfile = {
 export const EMPTY_GROW_TIMING_STATS: GrowTimingStats = {
   hostLookupMs: 0,
   freeSidesMs: 0,
-  computeTransformsMs: 0,
   candidateBuildMs: 0,
   parentTransformLookupMs: 0,
   attemptsLoopMs: 0,

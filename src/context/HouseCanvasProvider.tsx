@@ -1,34 +1,34 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
-import {
-  createRootHouse,
-} from '../domain/house/graph'
-import { addRandomHouse } from '../domain/house/growth'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createRootHouse } from '../domain/house/graph'
+import { addRandomHouse } from '../engine/simulation/addRandomHouse'
 import { runSimulationTick } from '../engine/simulation/runTick'
-import type { SimulationWorldState } from '../engine/simulation/types'
-import { HouseCanvasContext } from './HouseCanvasContext'
-import {
-  type HouseGeometry,
-  type HouseNode,
-  type Point,
-  type ClickAction,
-  type RippleParams,
-  type PropagatingRipple,
-  type CoveredSideCount,
-  type SideBehavior,
-  type SideBehaviorByCoverage,
-  DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE,
+import type { SimulationWorld } from '../engine/simulation/types'
+import { buildWorldState } from '../engine/simulation/worldState'
+import { decodeRules, DEFAULT_RULE_PRESET } from '../rules'
+import { formatSharedSetup, parseSharedSetup } from '../shareLink'
+import { loadThemeName, saveThemeName, THEMES, type ThemeName } from '../theme'
+import { HouseCanvasContext, type OverloadNotice } from './HouseCanvasContext'
+import type {
+  HouseGeometry,
+  ClickAction,
+  RippleParams,
+  CoveredSideCount,
+  SideBehavior,
+  SideBehaviorByCoverage,
 } from '../types'
+
+const BASE_UNDERSIDE_LENGTH = 120
+const DEFAULT_SIMULATION_SPEED = 2
+
+// The simulation pauses itself after this many consecutive ticks that took longer than
+// the limit or started that much late.
+const SLOW_TICK_LIMIT_MS = 200
+const SLOW_TICKS_BEFORE_PAUSE = 3
 
 const DEFAULT_RIPPLE_PARAMS: RippleParams = {
   // speed is in "houses per second"
   speed: 40,
-  color: '#ff0000',
+  color: '#ff5a36',
   opacity: 0.5,
   // range is in graph hops
   range: 10,
@@ -36,43 +36,42 @@ const DEFAULT_RIPPLE_PARAMS: RippleParams = {
   lifetime: 500,
 }
 
+const createInitialWorld = (rootHouseId: number, houseGeometry: HouseGeometry): SimulationWorld => {
+  const houses = [createRootHouse(rootHouseId)]
+  return { houses, worldState: buildWorldState({ houses, houseGeometry }) }
+}
+
 type HouseCanvasProviderProps = {
   children: ReactNode
 }
 
 export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
-  const [undersideScale, setUndersideScale] = useState(1)
-  const [sideScale, setSideScale] = useState(0.68)
-  const [zoom, setZoom] = useState(1)
-  const [pan, setPan] = useState<Point>({ x: 0, y: 0 })
-  const [isPlaying, setIsPlaying] = useState(false)
+  // A shared link (see shareLink.ts) overrides the defaults once, on load.
+  const [sharedSetup] = useState(() => parseSharedSetup(window.location.hash))
+
+  const [undersideScale, setUndersideScale] = useState(sharedSetup.undersideScale ?? 1)
+  const [sideScale, setSideScale] = useState(sharedSetup.sideScale ?? 0.68)
+  const [roofAngle, setRoofAngle] = useState(sharedSetup.roofAngle ?? 80)
+  const [allowOverlap, setAllowOverlap] = useState(sharedSetup.allowOverlap ?? false)
+  const [sideBehaviorByCoverage, setSideBehaviorByCoverage] = useState<SideBehaviorByCoverage>(
+    () => sharedSetup.rules ?? decodeRules(DEFAULT_RULE_PRESET.code)!,
+  )
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [simulationSpeed, setSimulationSpeed] = useState(DEFAULT_SIMULATION_SPEED)
+  const [tickCount, setTickCount] = useState(0)
+  const [overload, setOverload] = useState<OverloadNotice | null>(null)
   const [debugProfilingEnabled, setDebugProfilingEnabled] = useState(false)
   const [showConnectionSideIndicators, setShowConnectionSideIndicators] = useState(false)
-  const [tickCount, setTickCount] = useState(0)
-  const [simulationSpeed, setSimulationSpeed] = useState(1)
-  const [sideBehaviorByCoverage, setSideBehaviorByCoverage] = useState<SideBehaviorByCoverage>(
-    DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE,
-  )
-  const [roofAngle, setRoofAngle] = useState(80)
-  const [allowOverlap, setAllowOverlap] = useState(false)
-  const [fillColor, setFillColor] = useState('#d9d9d9')
-  const [strokeColor, setStrokeColor] = useState('#000000')
-  const [houses, setHouses] = useState<HouseNode[]>([
-    createRootHouse(0),
-  ])
-  const [clickAction, setClickAction] = useState<ClickAction>('nothing')
+  const [themeName, setThemeNameState] = useState<ThemeName>(loadThemeName)
+  const [colorBySides, setColorBySides] = useState(true)
+  const [fillColor, setFillColor] = useState(() => THEMES[themeName].fillColor)
+  const [strokeColor, setStrokeColor] = useState(() => THEMES[themeName].strokeColor)
+  const [clickAction, setClickAction] = useState<ClickAction>('ripple')
   const [rippleParams, setRippleParams] = useState<RippleParams>(DEFAULT_RIPPLE_PARAMS)
-  const [propagatingRipples, setPropagatingRipples] = useState<PropagatingRipple[]>([])
-
-  const nextHouseIdRef = useRef(1)
-  const tickCountRef = useRef(0)
-  const simulationWorldStateRef = useRef<SimulationWorldState | undefined>(undefined)
-  const nextRippleIdRef = useRef(0)
 
   const houseGeometry = useMemo<HouseGeometry>(() => {
-    const baseUnderside = 120
-    const undersideLength = baseUnderside * undersideScale
-    const sideLength = baseUnderside * sideScale
+    const undersideLength = BASE_UNDERSIDE_LENGTH * undersideScale
+    const sideLength = BASE_UNDERSIDE_LENGTH * sideScale
     const halfAngleRad = (roofAngle * Math.PI) / 360
     const roofHeight = (undersideLength / 2) / Math.tan(halfAngleRad)
 
@@ -83,25 +82,88 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
     }
   }, [roofAngle, sideScale, undersideScale])
 
-  const roofHeight = houseGeometry.roofHeight
+  // The simulation reads and writes `worldRef` outside of React updaters (StrictMode runs
+  // those twice); `world` state mirrors it so components re-render.
+  const [world, setWorld] = useState(() => createInitialWorld(0, houseGeometry))
+  const worldRef = useRef(world)
+  const nextHouseIdRef = useRef(1)
+  const tickCountRef = useRef(0)
+  const slowTickStreakRef = useRef(0)
+  const overloadGuardEnabledRef = useRef(true)
 
-  const resetView = () => {
-    setPan({ x: 0, y: 0 })
-    setZoom(1)
+  const publishWorld = (nextWorld: SimulationWorld) => {
+    worldRef.current = nextWorld
+    setWorld(nextWorld)
+  }
+
+  const advanceTick = () => {
+    const tickStart = performance.now()
+    const result = runSimulationTick({
+      houses: worldRef.current.houses,
+      sideBehaviorByCoverage,
+      houseGeometry,
+      allowOverlap,
+      nextHouseId: nextHouseIdRef.current,
+      worldState: worldRef.current.worldState,
+      debugProfilingEnabled,
+    })
+    const tickMs = performance.now() - tickStart
+
+    nextHouseIdRef.current = result.nextHouseId
+    tickCountRef.current += 1
+    publishWorld({ houses: result.houses, worldState: result.worldState })
+    setTickCount(tickCountRef.current)
+
+    if (debugProfilingEnabled && result.profile) {
+      console.log('[sim-profile]', {
+        tick: tickCountRef.current,
+        ...result.profile,
+      })
+    }
+
+    return { tickMs, houseCount: result.houses.length }
+  }
+
+  const stepSimulation = () => {
+    setIsPlaying(false)
+    advanceTick()
   }
 
   const addHouse = () => {
-    setHouses((current: HouseNode[]) => {
-      const nextHouseId = nextHouseIdRef.current
-      const next = addRandomHouse(current, houseGeometry, allowOverlap, nextHouseId)
-
-      if (next !== current) {
-        nextHouseIdRef.current += 1
-        simulationWorldStateRef.current = undefined
-      }
-
-      return next
+    const houses = addRandomHouse({
+      houses: worldRef.current.houses,
+      worldState: worldRef.current.worldState,
+      houseGeometry,
+      allowOverlap,
+      newHouseId: nextHouseIdRef.current,
     })
+    if (!houses) return
+
+    nextHouseIdRef.current += 1
+    publishWorld({ houses, worldState: worldRef.current.worldState })
+  }
+
+  const resetWorld = () => {
+    publishWorld(createInitialWorld(nextHouseIdRef.current, houseGeometry))
+    nextHouseIdRef.current += 1
+    tickCountRef.current = 0
+    setTickCount(0)
+    slowTickStreakRef.current = 0
+    overloadGuardEnabledRef.current = true
+    setOverload(null)
+  }
+
+  // Rule changes from presets restart from a single house so their effect is visible.
+  const applyRules = (rules: SideBehaviorByCoverage) => {
+    setSideBehaviorByCoverage(rules)
+    resetWorld()
+    setIsPlaying(true)
+  }
+
+  const keepGoingAfterOverload = () => {
+    overloadGuardEnabledRef.current = false
+    setOverload(null)
+    setIsPlaying(true)
   }
 
   const setSideBehavior = (coveredSides: CoveredSideCount, behavior: SideBehavior) => {
@@ -111,76 +173,62 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
     }))
   }
 
-  const triggerRipple = (houseId: number) => {
-    const rippleId = `ripple-${nextRippleIdRef.current}`
-    nextRippleIdRef.current += 1
-
-    setPropagatingRipples((current) => [
-      ...current,
-      {
-        id: rippleId,
-        originHouseId: houseId,
-        startTime: Date.now(),
-        params: rippleParams,
-      },
-    ])
+  const setThemeName = (nextThemeName: ThemeName) => {
+    setThemeNameState(nextThemeName)
+    saveThemeName(nextThemeName)
+    setFillColor(THEMES[nextThemeName].fillColor)
+    setStrokeColor(THEMES[nextThemeName].strokeColor)
   }
 
   useEffect(() => {
-    simulationWorldStateRef.current = undefined
-  }, [houseGeometry])
+    document.documentElement.dataset.theme = themeName
+  }, [themeName])
 
-  // Clean up expired ripples periodically.
-  // A ripple is considered expired when it can no longer affect any house:
-  // maxTravelTime (range / speed) + lifetime.
+  // Keeps the address bar a shareable link to the current rules and shape.
   useEffect(() => {
-    if (propagatingRipples.length === 0) return
+    const hash = formatSharedSetup({
+      rules: sideBehaviorByCoverage,
+      undersideScale,
+      sideScale,
+      roofAngle,
+      allowOverlap,
+    })
+    window.history.replaceState(null, '', `#${hash}`)
+  }, [allowOverlap, roofAngle, sideBehaviorByCoverage, sideScale, undersideScale])
 
-    const intervalId = window.setInterval(() => {
-      const now = Date.now()
-      setPropagatingRipples((current) =>
-        current.filter((ripple) => {
-          const maxTravelMs = (ripple.params.range / Math.max(1, ripple.params.speed)) * 1000
-          const totalDurationMs = maxTravelMs + ripple.params.lifetime
-          return now - ripple.startTime < totalDurationMs
-        })
-      )
-    }, 100) // Check every 100ms
-
-    return () => window.clearInterval(intervalId)
-  }, [propagatingRipples.length])
+  // House positions depend on the geometry, so the cached world data is rebuilt.
+  useEffect(() => {
+    const { houses } = worldRef.current
+    publishWorld({ houses, worldState: buildWorldState({ houses, houseGeometry }) })
+  }, [houseGeometry])
 
   useEffect(() => {
     if (!isPlaying) return
 
+    // Resuming by hand dismisses an earlier overload notice; the guard stays active.
+    setOverload(null)
+    slowTickStreakRef.current = 0
+
     const intervalMs = 1000 / simulationSpeed
+    // Timer lag also catches slow drawing. Browsers throttle timers in hidden tabs, so lag
+    // is only measured between two visible ticks.
+    let previousVisibleTickAt: number | null = null
     const intervalId = window.setInterval(() => {
-      setHouses((current) => {
-        const result = runSimulationTick({
-          houses: current,
-          sideBehaviorByCoverage,
-          houseGeometry,
-          allowOverlap,
-          nextHouseId: nextHouseIdRef.current,
-          worldState: simulationWorldStateRef.current,
-          debugProfilingEnabled,
-        })
+      const tickStartedAt = performance.now()
+      const lagMs =
+        previousVisibleTickAt === null ? 0 : tickStartedAt - previousVisibleTickAt - intervalMs
+      previousVisibleTickAt = document.hidden ? null : tickStartedAt
 
-        nextHouseIdRef.current = result.nextHouseId
-        simulationWorldStateRef.current = result.worldState
+      const { tickMs, houseCount } = advanceTick()
+      const isSlow = Math.max(tickMs, lagMs) > SLOW_TICK_LIMIT_MS
+      slowTickStreakRef.current = isSlow ? slowTickStreakRef.current + 1 : 0
 
-        if (debugProfilingEnabled && result.profile) {
-          const tick = tickCountRef.current + 1
-          console.log('[sim-profile]', {
-            tick,
-            ...result.profile,
-          })
-        }
-
-        return result.houses
-      })
-      tickCountRef.current += 1
-      setTickCount(tickCountRef.current)
+      if (overloadGuardEnabledRef.current && slowTickStreakRef.current >= SLOW_TICKS_BEFORE_PAUSE) {
+        // Stop right away; the effect cleanup only runs after React re-renders.
+        window.clearInterval(intervalId)
+        setIsPlaying(false)
+        setOverload({ houseCount })
+      }
     }, intervalMs)
 
     return () => window.clearInterval(intervalId)
@@ -196,8 +244,7 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
   return (
     <HouseCanvasContext.Provider
       value={{
-        zoom,
-        pan,
+        world,
         isPlaying,
         debugProfilingEnabled,
         showConnectionSideIndicators,
@@ -207,41 +254,38 @@ export function HouseCanvasProvider({ children }: HouseCanvasProviderProps) {
         undersideScale,
         sideScale,
         roofAngle,
-        roofHeight,
         houseGeometry,
         allowOverlap,
+        themeName,
+        colorBySides,
         fillColor,
         strokeColor,
-        houses,
         clickAction,
         rippleParams,
-        propagatingRipples,
+        overload,
         setUndersideScale,
         setSideScale,
         setRoofAngle,
         setAllowOverlap,
+        setThemeName,
+        setColorBySides,
         setFillColor,
         setStrokeColor,
-        setPan,
-        setZoom,
         setIsPlaying,
         setDebugProfilingEnabled,
         setShowConnectionSideIndicators,
         setSimulationSpeed,
         setSideBehavior,
+        applyRules,
         setClickAction,
         setRippleParams,
-        triggerRipple,
-        resetView,
+        stepSimulation,
         addHouse,
+        resetWorld,
+        keepGoingAfterOverload,
       }}
     >
       {children}
     </HouseCanvasContext.Provider>
   )
 }
-
-
-
-
-

@@ -4,8 +4,13 @@
 
 - Purpose: A cellular-automaton toy in the browser. Pentagon-shaped "houses" (an
   underside, two walls, two roof sides) snap together edge to edge and grow, survive or
-  die depending on how many of their sides are connected. The concept is in
-  `README.md`; read it before working on simulation rules.
+  die depending on how many of their sides are connected. It invites people to explore
+  which patterns this shape produces. The concept is in `README.md`; read it before
+  working on simulation rules.
+- Look and feel: playful to use but calm in appearance, closer to a scientific or
+  generative-art piece than to a cartoon game. Default theme "Night" (dark, warm accent);
+  "Classic" is the light alternative. Avoid decorative effects that don't help reading the
+  pattern.
 - Stage: Prototype, client only, no backend.
   - Houses: each house is a node in a connection graph. Sides only connect to sides of
     the same kind (underside to underside, wall to wall, roof to roof). New houses are
@@ -14,34 +19,53 @@
   - Simulation: each tick, every house looks up the behavior for its number of covered
     sides (0–5) in a player-editable rule table: `die`, `nothing` or `grow`. Dying houses
     are removed and disconnected, then growing houses try to attach a new house to a
-    random free side. A spatial index speeds up overlap checks.
+    random free side. A spatial index speeds up overlap checks, and hosts whose free
+    sides are all blocked are skipped until a nearby house dies.
   - Click actions: clicking a house can start a ripple that travels through the
     connection graph (breadth-first, in hops) and briefly tints the houses it reaches.
-  - UI: a pannable and zoomable canvas and a settings sidebar (play/pause, speed, rule
-    table, add house, overlap, click action and ripple settings, house geometry,
-    colors, debug profiling logs).
-- Frontend: React 19 + TypeScript with CSS Modules, built with Vite. The world is drawn
-  on a 2D `<canvas>` in `HouseCanvas.tsx`. App state lives in a React context
-  (`HouseCanvasProvider`), which runs the tick loop with `setInterval`.
+  - Start: one house, "Slow bloom" rules, playing at 2 ticks per second, ripple on click,
+    houses colored by connected sides. A shared link (`#rules=…&underside=…`) overrides
+    the rules and shape.
+  - Overload guard: three ticks in a row that take over 200 ms (or start that late)
+    pause the simulation and show a notice (reset or keep going).
+  - UI: full-screen canvas (pan, wheel or pinch zoom, Fit / Reset view), title with the
+    active preset, an always-visible play bar (play/pause, step, speed, tick and house
+    counts, Space toggles play), and a floating settings panel with collapsible sections:
+    rules (presets, Random, rule table, overlap, add house, reset world), shape (with
+    preview), click action, appearance (theme, color by connected sides, colors), share
+    link and debug. Below 700px width the panel becomes a bottom sheet.
+- Frontend: React 19 + TypeScript with CSS Modules, built with Vite. App state lives
+  in a React context (`HouseCanvasProvider`), which runs the tick loop with
+  `setInterval`. The simulation runs outside React state updaters (StrictMode calls
+  those twice) and publishes each new world. `HouseCanvas.tsx` draws with a
+  `requestAnimationFrame` loop that reads camera, ripples and the latest world from refs,
+  so panning, zooming and ripples never re-render React.
 - Runtime and package manager: Node.js 24, npm, TypeScript 6 (`strict` mode).
 - Deployment: GitHub Pages via `.github/workflows/deploy.yml` on every push to `main`.
   Vite builds with `base: '/game_of_house'`.
 - Environment setup: `npm install`.
 - Repository map:
   - `src/types.ts` — shared types and rule constants (houses, sides, geometry, rule
-    table and its defaults, ripples).
+    table and its defaults, ripple settings).
+  - `src/rules.ts` — rule table encoding, presets and random rules.
+  - `src/shareLink.ts` — reading and writing the setup in the URL hash.
+  - `src/theme.ts` — theme names, house colors per theme, stored theme choice. UI colors
+    are CSS variables in `src/index.css` per `data-theme`.
   - `src/domain/house/` — house model without simulation state: `geometry.ts`
-    (polygons, transforms, overlap tests), `graph.ts` (sides, connections),
-    `growth.ts` (placing a new house on a free side).
-  - `src/engine/simulation/` — one tick: `runTick.ts` (rule application, removal,
-    growth), `growFromHost.ts` (growth with the spatial index), `worldState.ts`
-    (cached world transforms and spatial index), `profiling.ts` (debug timings),
-    `types.ts`.
+    (polygons, transforms, overlap tests), `graph.ts` (sides, connections).
+  - `src/engine/simulation/` — `runTick.ts` (one tick: rule application, removal,
+    growth), `growFromHost.ts` (placing a house on a free side of a host),
+    `addRandomHouse.ts` (manual "Add house"), `worldState.ts` (cached world
+    transforms and polygons, spatial index, blocked hosts), `profiling.ts` (debug
+    timings), `types.ts`. Tick and growth code mutate houses they copied for the
+    current tick and update the world state in place.
   - `src/engine/actions/` — click actions; `ripple.ts` computes ripple propagation.
   - `src/context/` — `HouseCanvasProvider.tsx` owns app state and the tick loop;
     `useHouseCanvas.ts` reads it.
-  - `src/components/` — `HouseCanvas.tsx` (rendering, pan, zoom, clicks) and
-    `Sidebar.tsx` (settings).
+  - `src/components/` — `HouseCanvas.tsx` (draw loop, pointer and wheel input, ripples,
+    view buttons), `camera.ts` (pan/zoom math), `drawWorld.ts` (batched canvas drawing
+    with viewport culling), `PlayBar.tsx`, `OverloadNotice.tsx`, `Sidebar.tsx`
+    (settings panel). `App.tsx` lays out the overlays and the title.
   - `public/` — static assets (favicon).
 - Rule and design requirements are supplied per task. Do not invent new rules,
   click actions or house shapes; ask.

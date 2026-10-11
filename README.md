@@ -13,21 +13,33 @@ Play it at <https://tobias-zip.github.io/game_of_house/>.
 
 ## Rules
 
-- Each tick, every house counts its **covered sides** (0–5) and looks up what to do in
+- Each tick, every house counts its **connected sides** (0–5) and looks up what to do in
   the rule table:
-  - **die** — the house is removed and its neighbours lose that connection.
-  - **nothing** — the house stays as it is.
-  - **grow** — the house attaches a new house to a random free side.
-- The default rules: 0 → die, 1–2 → grow, 3 → nothing, 4–5 → die. Every entry can be
-  changed in the sidebar while the simulation runs.
+  - **die**: the house is removed and its neighbours lose that connection.
+  - **nothing**: the house stays as it is.
+  - **grow**: the house attaches a new house to a random free side.
 - New houses may not overlap existing ones unless overlap is allowed.
+- Presets show what the default shape can do:
+  - **Slow bloom** (the default): grows steadily outwards.
+  - **Crystal**: grows briefly, then freezes.
+  - **Lace**: houses with 3 or 5 neighbours die.
+  - **Coral**: fast growth with constant dying.
+  - **Wildfire**: every house grows.
+- **Random** rolls a new rule table. Every rule can also be changed while the
+  simulation runs.
 
 ## Interaction
 
-- Play, pause and set the simulation speed, or add houses by hand.
-- **Click actions:** clicking a house can send a **ripple** through the connection
-  graph. Its colour, opacity, speed, range (in hops) and lifetime are adjustable.
-- Drag to pan, scroll to zoom.
+- The play bar plays, pauses (also with Space), steps one tick and sets the speed.
+- Click a house to send a **ripple** through the connection graph.
+- Drag to pan; scroll or pinch to zoom. **Fit** frames all houses.
+- Houses are colored by their number of connected sides, so growth fronts and stable
+  cores stand out. Themes: Night (default) and Classic.
+- The address bar always holds a link to the current rules and house shape; **Copy
+  link** in the settings shares it.
+- When the world gets too big for the device, the simulation pauses and offers to
+  start over.
+- On phones the settings open as a sheet from the **Settings** button.
 
 ## Development
 

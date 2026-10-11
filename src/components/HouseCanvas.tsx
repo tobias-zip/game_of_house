@@ -1,362 +1,298 @@
-import { useEffect, useRef, useState } from 'react'
-import {
-  clamp,
-  computeTransforms,
-  getHousePolygon,
-  pointInPolygon,
-  transformPolygon,
-  VIEW_BOX,
-} from '../domain/house/geometry'
+import { useEffect, useRef } from 'react'
+import { pointInPolygon } from '../domain/house/geometry'
 import { useHouseCanvas } from '../context/useHouseCanvas'
+import { rippleDurationMs } from '../engine/actions/ripple'
+import type { AABB } from '../engine/simulation/types'
+import { querySpatialIndex } from '../engine/simulation/worldState'
+import { THEMES } from '../theme'
+import type { Point } from '../types'
 import {
-  computeRippleEffect,
-  hexToRgb,
-} from '../engine/actions/ripple'
-import type { Transform } from '../types'
+  fitCameraToBounds,
+  INITIAL_CAMERA,
+  panCamera,
+  screenToWorld,
+  zoomCameraAt,
+  type Camera,
+  type CanvasSize,
+} from './camera'
+import { drawWorld, refreshRippleEffects, type ActiveRipple } from './drawWorld'
 import styles from './HouseCanvas.module.css'
 
-const getCentroid = (polygon: { x: number; y: number }[]) => {
-  let x = 0
-  let y = 0
-  for (const point of polygon) {
-    x += point.x
-    y += point.y
-  }
-  return { x: x / polygon.length, y: y / polygon.length }
+// Pointer movement (CSS px) before a press counts as a drag instead of a click.
+const DRAG_THRESHOLD_PX = 5
+const WHEEL_ZOOM_SPEED = 0.001
+const WHEEL_LINE_HEIGHT_PX = 16
+
+type Gesture = {
+  start: Point
+  isDrag: boolean
 }
 
-const drawConnectedSideTriangle = ({
-  ctx,
-  start,
-  end,
-  centroid,
-}: {
-  ctx: CanvasRenderingContext2D
-  start: { x: number; y: number }
-  end: { x: number; y: number }
-  centroid: { x: number; y: number }
-}) => {
-  const dx = end.x - start.x
-  const dy = end.y - start.y
-  const length = Math.hypot(dx, dy)
-  if (length < 0.0001) return
-
-  const ux = dx / length
-  const uy = dy / length
-  const midpoint = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
-
-  const normalA = { x: -uy, y: ux }
-  const normalB = { x: uy, y: -ux }
-  const towardCenter = { x: centroid.x - midpoint.x, y: centroid.y - midpoint.y }
-  const normal =
-    normalA.x * towardCenter.x + normalA.y * towardCenter.y >= 0 ? normalA : normalB
-
-  const baseHalf = 5
-  const baseInset = 2
-  const tipInset = 10
-
-  const baseCenter = {
-    x: midpoint.x + normal.x * baseInset,
-    y: midpoint.y + normal.y * baseInset,
-  }
-
-  const left = {
-    x: baseCenter.x - ux * baseHalf,
-    y: baseCenter.y - uy * baseHalf,
-  }
-  const right = {
-    x: baseCenter.x + ux * baseHalf,
-    y: baseCenter.y + uy * baseHalf,
-  }
-  const tip = {
-    x: midpoint.x + normal.x * tipInset,
-    y: midpoint.y + normal.y * tipInset,
-  }
-
-  ctx.fillStyle = '#c00'
-  ctx.beginPath()
-  ctx.moveTo(left.x, left.y)
-  ctx.lineTo(right.x, right.y)
-  ctx.lineTo(tip.x, tip.y)
-  ctx.closePath()
-  ctx.fill()
-}
+const getDistance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
+const getMidpoint = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
 
 function HouseCanvas() {
   const {
-    houses,
+    world,
     houseGeometry,
-    pan,
-    setPan,
-    setZoom,
-    zoom,
     fillColor,
     strokeColor,
+    colorBySides,
+    themeName,
     showConnectionSideIndicators,
     clickAction,
-    propagatingRipples,
-    triggerRipple,
+    rippleParams,
   } = useHouseCanvas()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const dragState = useRef({ active: false, x: 0, y: 0 })
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
-  const transformsRef = useRef<Map<number, Transform>>(new Map())
+  const sizeRef = useRef<CanvasSize>({ width: 0, height: 0 })
+  const cameraRef = useRef<Camera>(INITIAL_CAMERA)
+  const ripplesRef = useRef<ActiveRipple[]>([])
+  const pointersRef = useRef(new Map<number, Point>())
+  const gestureRef = useRef<Gesture | null>(null)
+  const needsDrawRef = useRef(true)
+
+  const coveredSidesPalette = colorBySides ? THEMES[themeName].coveredSidesPalette : null
+
+  // The draw loop reads the latest props from here instead of re-rendering.
+  const sceneRef = useRef({
+    world,
+    houseGeometry,
+    fillColor,
+    strokeColor,
+    coveredSidesPalette,
+    showConnectionSideIndicators,
+  })
+  useEffect(() => {
+    sceneRef.current = {
+      world,
+      houseGeometry,
+      fillColor,
+      strokeColor,
+      coveredSidesPalette,
+      showConnectionSideIndicators,
+    }
+    needsDrawRef.current = true
+  }, [world, houseGeometry, fillColor, strokeColor, coveredSidesPalette, showConnectionSideIndicators])
+
+  const setCamera = (camera: Camera) => {
+    cameraRef.current = camera
+    needsDrawRef.current = true
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !canvas.parentElement) return
+    if (!canvas) return
 
-    const parent = canvas.parentElement
     const updateSize = () => {
-      const width = parent.clientWidth
-      const height = parent.clientHeight
-      setCanvasSize((current) => {
-        if (current.width === width && current.height === height) return current
-        return { width, height }
-      })
+      const width = canvas.clientWidth
+      const height = canvas.clientHeight
+      const devicePixelRatio = window.devicePixelRatio || 1
+      sizeRef.current = { width, height }
+      canvas.width = Math.floor(width * devicePixelRatio)
+      canvas.height = Math.floor(height * devicePixelRatio)
+      needsDrawRef.current = true
     }
 
     updateSize()
     const observer = new ResizeObserver(updateSize)
-    observer.observe(parent)
+    observer.observe(canvas)
     return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || canvasSize.width === 0 || canvasSize.height === 0) return
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
 
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.floor(canvasSize.width * dpr)
-    canvas.height = Math.floor(canvasSize.height * dpr)
+    let frameId = 0
+    const drawFrame = () => {
+      frameId = requestAnimationFrame(drawFrame)
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, canvasSize.width, canvasSize.height)
-
-    const fitScale = Math.min(
-      canvasSize.width / VIEW_BOX.width,
-      canvasSize.height / VIEW_BOX.height,
-    )
-    const offsetX = (canvasSize.width - VIEW_BOX.width * fitScale) / 2
-    const offsetY = (canvasSize.height - VIEW_BOX.height * fitScale) / 2
-
-    ctx.translate(offsetX, offsetY)
-    ctx.scale(fitScale, fitScale)
-    ctx.translate(-VIEW_BOX.minX, -VIEW_BOX.minY)
-
-    ctx.translate(pan.x, pan.y)
-    ctx.scale(zoom, zoom)
-
-    ctx.fillStyle = fillColor
-    ctx.strokeStyle = strokeColor
-    ctx.lineWidth = 1
-
-    const transforms = computeTransforms(houses, houseGeometry)
-    transformsRef.current = transforms
-    const housePolygon = getHousePolygon(houseGeometry)
-    const centroid = getCentroid(housePolygon)
-
-    // Compute ripple effects for each propagating ripple.
-    // Lifetime is per-house: once the wave reaches a house, it remains colored for `lifetime` ms.
-    const rippleEffectsByHouseId = new Map<number, { color: string; opacity: number }[]>()
-    const now = Date.now()
-
-    for (const ripple of propagatingRipples) {
-      const elapsedTime = now - ripple.startTime
-      const effects = computeRippleEffect(
-        houses,
-        ripple.originHouseId,
-        ripple.params.range,
+      const now = Date.now()
+      ripplesRef.current = ripplesRef.current.filter(
+        (ripple) => now - ripple.startTime < rippleDurationMs(ripple.params),
       )
+      const hasRipples = ripplesRef.current.length > 0
+      // Keep drawing one frame after the last ripple expires to clear its overlay.
+      if (!needsDrawRef.current && !hasRipples) return
+      needsDrawRef.current = hasRipples
 
-      for (const effect of effects) {
-        const safeSpeed = Math.max(0.0001, ripple.params.speed)
-        const reachDelayMs = (effect.distance / safeSpeed) * 1000
-        const activeForHouse =
-          elapsedTime >= reachDelayMs && elapsedTime <= reachDelayMs + ripple.params.lifetime
+      const size = sizeRef.current
+      if (size.width === 0 || size.height === 0) return
 
-        if (activeForHouse) {
-          if (!rippleEffectsByHouseId.has(effect.houseId)) {
-            rippleEffectsByHouseId.set(effect.houseId, [])
-          }
-          rippleEffectsByHouseId.get(effect.houseId)!.push({
-            color: ripple.params.color,
-            opacity: ripple.params.opacity,
-          })
-        }
-      }
+      const scene = sceneRef.current
+      refreshRippleEffects(ripplesRef.current, scene.world.houses)
+      drawWorld({
+        ctx,
+        size,
+        devicePixelRatio: canvas.width / size.width,
+        camera: cameraRef.current,
+        ripples: ripplesRef.current,
+        now,
+        ...scene,
+      })
     }
 
-    for (const house of houses) {
-      const transform = transforms.get(house.id)
-      if (!transform) continue
+    frameId = requestAnimationFrame(drawFrame)
+    return () => cancelAnimationFrame(frameId)
+  }, [])
 
-      ctx.save()
-      ctx.transform(
-        transform.a,
-        transform.b,
-        transform.c,
-        transform.d,
-        transform.e,
-        transform.f,
-      )
-
-      // Draw base house
-      ctx.fillStyle = fillColor
-      ctx.strokeStyle = strokeColor
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(housePolygon[0].x, housePolygon[0].y)
-      for (let index = 1; index < housePolygon.length; index += 1) {
-        ctx.lineTo(housePolygon[index].x, housePolygon[index].y)
-      }
-      ctx.closePath()
-      ctx.fill()
-      ctx.stroke()
-
-      // Apply ripple effects with additive blending
-      const rippleEffects = rippleEffectsByHouseId.get(house.id)
-      if (rippleEffects && rippleEffects.length > 0) {
-        ctx.globalCompositeOperation = 'lighter'
-        for (const effect of rippleEffects) {
-          const rgb = hexToRgb(effect.color)
-          if (rgb) {
-            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${effect.opacity})`
-            ctx.beginPath()
-            ctx.moveTo(housePolygon[0].x, housePolygon[0].y)
-            for (let index = 1; index < housePolygon.length; index += 1) {
-              ctx.lineTo(housePolygon[index].x, housePolygon[index].y)
-            }
-            ctx.closePath()
-            ctx.fill()
-          }
-        }
-        ctx.globalCompositeOperation = 'source-over'
-      }
-
-      if (showConnectionSideIndicators) {
-        for (let sideIndex = 0; sideIndex < house.sides.length; sideIndex += 1) {
-          if (!house.sides[sideIndex]) continue
-          const start = housePolygon[sideIndex]
-          const end = housePolygon[(sideIndex + 1) % housePolygon.length]
-          drawConnectedSideTriangle({ ctx, start, end, centroid })
-        }
-
-        ctx.fillStyle = fillColor
-        ctx.strokeStyle = strokeColor
-        ctx.lineWidth = 1
-      }
-
-      ctx.restore()
-    }
-  }, [
-    canvasSize,
-    fillColor,
-    houseGeometry,
-    houses,
-    pan,
-    showConnectionSideIndicators,
-    strokeColor,
-    zoom,
-    propagatingRipples,
-  ])
-
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    dragState.current = { active: true, x: event.clientX, y: event.clientY }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragState.current.active) return
-    const dx = event.clientX - dragState.current.x
-    const dy = event.clientY - dragState.current.y
-    dragState.current = { active: true, x: event.clientX, y: event.clientY }
-    setPan((current) => ({ x: current.x + dx, y: current.y + dy }))
-  }
-
-  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    dragState.current.active = false
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const onClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  // React registers wheel listeners as passive, which ignores preventDefault().
+  useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || clickAction === 'nothing') return
+    if (!canvas) return
 
-    if (canvasSize.width === 0 || canvasSize.height === 0) return
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      const rect = canvas.getBoundingClientRect()
+      const deltaY =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * WHEEL_LINE_HEIGHT_PX : event.deltaY
+      setCamera(
+        zoomCameraAt(
+          cameraRef.current,
+          sizeRef.current,
+          { x: event.clientX - rect.left, y: event.clientY - rect.top },
+          Math.exp(-deltaY * WHEEL_ZOOM_SPEED),
+        ),
+      )
+    }
 
-    // Use the event target rect (the wrapper div) to avoid any subtle offsets
-    // between the canvas element and its container (borders, subpixel layout, etc.).
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, [])
+
+  const getCanvasPoint = (event: React.PointerEvent<HTMLCanvasElement>): Point => {
     const rect = event.currentTarget.getBoundingClientRect()
-    const canvasX = event.clientX - rect.left
-    const canvasY = event.clientY - rect.top
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top }
+  }
 
-    // Convert canvas pixel coordinates to world coordinates
-    const fitScale = Math.min(
-      canvasSize.width / VIEW_BOX.width,
-      canvasSize.height / VIEW_BOX.height,
-    )
-    const offsetX = (canvasSize.width - VIEW_BOX.width * fitScale) / 2
-    const offsetY = (canvasSize.height - VIEW_BOX.height * fitScale) / 2
+  const findHouseAt = (screenPoint: Point) => {
+    const { worldState } = sceneRef.current.world
+    const worldPoint = screenToWorld(cameraRef.current, sizeRef.current, screenPoint)
+    const pointBounds: AABB = {
+      minX: worldPoint.x,
+      minY: worldPoint.y,
+      maxX: worldPoint.x,
+      maxY: worldPoint.y,
+    }
 
-    // Build the exact same transform used for rendering (in CSS pixels) and invert it.
-    // This avoids errors from hand-derived inverse math, especially when zooming.
-    const viewToScreen = new DOMMatrix()
-      .translate(offsetX, offsetY)
-      .scale(fitScale)
-      .translate(-VIEW_BOX.minX, -VIEW_BOX.minY)
-      .translate(pan.x, pan.y)
-      .scale(zoom)
+    for (const houseId of querySpatialIndex(worldState.spatialIndex, pointBounds)) {
+      const worldData = worldState.byHouseId.get(houseId)
+      if (worldData && pointInPolygon(worldPoint, worldData.polygon)) return houseId
+    }
+    return null
+  }
 
-    let screenToView: DOMMatrix
-    try {
-      screenToView = viewToScreen.inverse()
-    } catch {
+  const runClickAction = (screenPoint: Point) => {
+    if (clickAction !== 'ripple') return
+
+    const houseId = findHouseAt(screenPoint)
+    if (houseId === null) return
+
+    ripplesRef.current.push({
+      originHouseId: houseId,
+      startTime: Date.now(),
+      params: rippleParams,
+      effects: [],
+      effectsForHouses: null,
+    })
+  }
+
+  const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const point = getCanvasPoint(event)
+    pointersRef.current.set(event.pointerId, point)
+    event.currentTarget.setPointerCapture(event.pointerId)
+
+    if (pointersRef.current.size === 1) {
+      gestureRef.current = { start: point, isDrag: false }
+    } else if (gestureRef.current) {
+      // A second finger turns the gesture into a pinch; it never ends in a click.
+      gestureRef.current.isDrag = true
+    }
+  }
+
+  const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const pointers = pointersRef.current
+    const previous = pointers.get(event.pointerId)
+    const gesture = gestureRef.current
+    if (!previous || !gesture) return
+
+    const point = getCanvasPoint(event)
+
+    if (pointers.size === 1) {
+      pointers.set(event.pointerId, point)
+      if (!gesture.isDrag && getDistance(point, gesture.start) < DRAG_THRESHOLD_PX) return
+      gesture.isDrag = true
+      setCamera(panCamera(cameraRef.current, point.x - previous.x, point.y - previous.y))
       return
     }
 
-    const p = new DOMPoint(canvasX, canvasY).matrixTransform(screenToView)
-    const clickPoint = { x: p.x, y: p.y }
-    const housePolygon = getHousePolygon(houseGeometry)
+    const [first, second] = [...pointers.values()]
+    pointers.set(event.pointerId, point)
+    const [nextFirst, nextSecond] = [...pointers.values()]
 
-    // Find which house was clicked
-    for (const house of houses) {
-      const transform = transformsRef.current.get(house.id)
-      if (!transform) continue
+    const previousMidpoint = getMidpoint(first, second)
+    const nextMidpoint = getMidpoint(nextFirst, nextSecond)
+    const previousDistance = getDistance(first, second)
+    if (previousDistance === 0) return
 
-      const transformedPolygon = transformPolygon(housePolygon, transform)
-      if (pointInPolygon(clickPoint, transformedPolygon)) {
-        if (clickAction === 'ripple') {
-          triggerRipple(house.id)
-        }
-        break
+    const panned = panCamera(
+      cameraRef.current,
+      nextMidpoint.x - previousMidpoint.x,
+      nextMidpoint.y - previousMidpoint.y,
+    )
+    setCamera(
+      zoomCameraAt(
+        panned,
+        sizeRef.current,
+        nextMidpoint,
+        getDistance(nextFirst, nextSecond) / previousDistance,
+      ),
+    )
+  }
+
+  const onPointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!pointersRef.current.delete(event.pointerId)) return
+
+    const gesture = gestureRef.current
+    if (pointersRef.current.size === 0) {
+      gestureRef.current = null
+      if (gesture && !gesture.isDrag && event.type === 'pointerup') {
+        runClickAction(getCanvasPoint(event))
       }
     }
   }
 
-  const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const factor = event.deltaY < 0 ? 1.1 : 0.9
-    setZoom((current) => clamp(current * factor, 0.05, 4))
+  const fitView = () => {
+    const bounds: AABB = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+    for (const worldData of sceneRef.current.world.worldState.byHouseId.values()) {
+      bounds.minX = Math.min(bounds.minX, worldData.bounds.minX)
+      bounds.minY = Math.min(bounds.minY, worldData.bounds.minY)
+      bounds.maxX = Math.max(bounds.maxX, worldData.bounds.maxX)
+      bounds.maxY = Math.max(bounds.maxY, worldData.bounds.maxY)
+    }
+    if (bounds.minX === Infinity) return
+    setCamera(fitCameraToBounds(bounds, sizeRef.current))
   }
 
   return (
-    <div
-      className={styles.viewport}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onWheel={onWheel}
-      onClick={onClick}
-    >
-      <canvas ref={canvasRef} className={styles.canvas} />
+    <div className={styles.viewport}>
+      <canvas
+        ref={canvasRef}
+        className={styles.canvas}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      />
+      <div className={styles.viewControls}>
+        <button type="button" onClick={fitView}>
+          Fit
+        </button>
+        <button type="button" onClick={() => setCamera(INITIAL_CAMERA)}>
+          Reset view
+        </button>
+      </div>
     </div>
   )
 }

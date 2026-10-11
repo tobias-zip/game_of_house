@@ -1,6 +1,6 @@
 .viewport {
-  flex: 1;
-  border-right: 1px solid #ccc;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
@@ -9,4 +9,26 @@
   height: 100%;
   display: block;
   touch-action: none;
+}
+
+.viewControls {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  gap: 6px;
+}
+
+.viewControls button {
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+}
+
+/* Keeps the controls clear of the centered play bar on phones. */
+@media (max-width: 700px) {
+  .viewControls {
+    top: 64px;
+    bottom: auto;
+    left: 12px;
+  }
 }

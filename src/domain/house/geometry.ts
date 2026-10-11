@@ -76,50 +76,49 @@ export const pointInPolygon = (point: Point, polygon: Polygon): boolean => {
   return inside
 }
 
-const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y
-
-const getAxes = (polygon: Polygon): Point[] => {
-  const axes: Point[] = []
+// True if some edge normal of `polygon` separates the two polygons (separating axis
+// theorem). Touching polygons count as separated. Written without allocations because
+// growth runs this test tens of thousands of times per tick.
+const hasSeparatingEdgeNormal = (polygon: Polygon, other: Polygon) => {
   for (let index = 0; index < polygon.length; index += 1) {
     const start = polygon[index]
     const end = polygon[(index + 1) % polygon.length]
-    const edge = { x: end.x - start.x, y: end.y - start.y }
-    const normal = { x: 0, y: 0 }
-    normal.x = -edge.y
-    normal.y = edge.x
-    const length = Math.hypot(normal.x, normal.y)
+    const normalX = start.y - end.y
+    const normalY = end.x - start.x
+    const length = Math.hypot(normalX, normalY)
     if (length < OVERLAP_EPSILON) continue
-    axes.push({ x: normal.x / length, y: normal.y / length })
-  }
-  return axes
-}
+    const axisX = normalX / length
+    const axisY = normalY / length
 
-const getProjection = (polygon: Polygon, axis: Point) => {
-  let min = dot(polygon[0], axis)
-  let max = min
-  for (let index = 1; index < polygon.length; index += 1) {
-    const value = dot(polygon[index], axis)
-    if (value < min) min = value
-    if (value > max) max = value
-  }
-  return { min, max }
-}
+    let polygonMin = Infinity
+    let polygonMax = -Infinity
+    for (const point of polygon) {
+      const projection = point.x * axisX + point.y * axisY
+      if (projection < polygonMin) polygonMin = projection
+      if (projection > polygonMax) polygonMax = projection
+    }
 
-export const polygonsOverlapArea = (a: Polygon, b: Polygon) => {
-  const axes = [...getAxes(a), ...getAxes(b)]
-  for (const axis of axes) {
-    const aProjection = getProjection(a, axis)
-    const bProjection = getProjection(b, axis)
+    let otherMin = Infinity
+    let otherMax = -Infinity
+    for (const point of other) {
+      const projection = point.x * axisX + point.y * axisY
+      if (projection < otherMin) otherMin = projection
+      if (projection > otherMax) otherMax = projection
+    }
 
     if (
-      aProjection.max <= bProjection.min + OVERLAP_EPSILON ||
-      bProjection.max <= aProjection.min + OVERLAP_EPSILON
+      polygonMax <= otherMin + OVERLAP_EPSILON ||
+      otherMax <= polygonMin + OVERLAP_EPSILON
     ) {
-      return false
+      return true
     }
   }
-  return true
+  return false
 }
+
+// Convex polygons only.
+export const polygonsOverlapArea = (a: Polygon, b: Polygon) =>
+  !hasSeparatingEdgeNormal(a, b) && !hasSeparatingEdgeNormal(b, a)
 
 export const getSideSegment = (side: SideIndex, geometry: HouseGeometry): Segment => {
   const polygon = getHousePolygon(geometry)

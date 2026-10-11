@@ -1,19 +1,22 @@
 import { createContext, type Dispatch, type SetStateAction } from 'react'
+import type { SimulationWorld } from '../engine/simulation/types'
+import type { ThemeName } from '../theme'
 import type {
   HouseGeometry,
-  HouseNode,
-  Point,
   ClickAction,
   RippleParams,
-  PropagatingRipple,
   CoveredSideCount,
   SideBehavior,
   SideBehaviorByCoverage,
 } from '../types'
 
+// Shown when the simulation paused itself because ticks got too slow.
+export type OverloadNotice = {
+  houseCount: number
+}
+
 export type HouseCanvasContextValue = {
-  zoom: number
-  pan: Point
+  world: SimulationWorld
   isPlaying: boolean
   debugProfilingEnabled: boolean
   showConnectionSideIndicators: boolean
@@ -23,37 +26,35 @@ export type HouseCanvasContextValue = {
   undersideScale: number
   sideScale: number
   roofAngle: number
-  roofHeight: number
   houseGeometry: HouseGeometry
   allowOverlap: boolean
+  themeName: ThemeName
+  colorBySides: boolean
   fillColor: string
   strokeColor: string
-  houses: HouseNode[]
   clickAction: ClickAction
   rippleParams: RippleParams
-  propagatingRipples: PropagatingRipple[]
+  overload: OverloadNotice | null
   setUndersideScale: Dispatch<SetStateAction<number>>
   setSideScale: Dispatch<SetStateAction<number>>
   setRoofAngle: Dispatch<SetStateAction<number>>
   setAllowOverlap: Dispatch<SetStateAction<boolean>>
+  setThemeName: (themeName: ThemeName) => void
+  setColorBySides: Dispatch<SetStateAction<boolean>>
   setFillColor: Dispatch<SetStateAction<string>>
   setStrokeColor: Dispatch<SetStateAction<string>>
-  setPan: Dispatch<SetStateAction<Point>>
-  setZoom: Dispatch<SetStateAction<number>>
   setIsPlaying: Dispatch<SetStateAction<boolean>>
   setDebugProfilingEnabled: Dispatch<SetStateAction<boolean>>
   setShowConnectionSideIndicators: Dispatch<SetStateAction<boolean>>
   setSimulationSpeed: Dispatch<SetStateAction<number>>
   setSideBehavior: (coveredSides: CoveredSideCount, behavior: SideBehavior) => void
+  applyRules: (rules: SideBehaviorByCoverage) => void
   setClickAction: Dispatch<SetStateAction<ClickAction>>
   setRippleParams: Dispatch<SetStateAction<RippleParams>>
-  triggerRipple: (houseId: number) => void
-  resetView: () => void
+  stepSimulation: () => void
   addHouse: () => void
+  resetWorld: () => void
+  keepGoingAfterOverload: () => void
 }
 
 export const HouseCanvasContext = createContext<HouseCanvasContextValue | null>(null)
-
-
-
-
