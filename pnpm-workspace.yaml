@@ -1,0 +1,3 @@
+# pnpm only runs install scripts of dependencies listed here.
+allowBuilds:
+  esbuild: true
