@@ -9,10 +9,16 @@
   "scripts": {
     "dev": "pnpm -r --parallel --if-present dev",
     "build": "pnpm -r --if-present build",
-    "preview": "pnpm --filter @game_of_house/client preview",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "vitest run --passWithNoTests",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "preview": "pnpm --filter @game_of_house/client preview"
   },
   "devDependencies": {
-    "typescript": "~6.0.2"
+    "@biomejs/biome": "2.5.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   }
 }
