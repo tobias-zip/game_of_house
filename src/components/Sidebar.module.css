@@ -1,0 +1,55 @@
+.sidebar {
+  width: 260px;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.title {
+  margin-top: 0;
+}
+
+.section {
+  margin: 0 0 12px;
+}
+
+.section:last-of-type {
+  margin-bottom: 0;
+}
+
+.button {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.tick {
+  margin: 8px 0 0;
+}
+
+.label {
+  display: block;
+}
+
+.spacedLabel {
+  display: block;
+  margin-top: 12px;
+}
+
+.checkboxLabel {
+  display: block;
+  margin-top: 8px;
+}
+
+.group {
+  margin-top: 12px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.hint {
+  color: #666;
+}

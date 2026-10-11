@@ -1,5 +1,5 @@
 import { getHousePolygon, IDENTITY_TRANSFORM } from '../../domain/house/geometry'
-import type { HouseNode } from '../../types'
+import type { CoveredSideCount, HouseNode } from '../../types'
 import { EMPTY_GROW_TIMING_STATS } from './profiling'
 import type { RunSimulationTickInput, RunSimulationTickResult } from './types'
 import { tryGrowFromHost } from './growFromHost'
@@ -10,7 +10,7 @@ import {
   worldStateNeedsRebuild,
 } from './worldState'
 
-const countCoveredSides = (house: HouseNode) => house.sides.filter(Boolean).length as 0 | 1 | 2 | 3 | 4 | 5
+const countCoveredSides = (house: HouseNode) => house.sides.filter(Boolean).length as CoveredSideCount
 
 export const runSimulationTick = ({
   houses,

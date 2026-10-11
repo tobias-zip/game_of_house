@@ -1,4 +1,5 @@
 import { useHouseCanvas } from '../context/useHouseCanvas'
+import styles from './Sidebar.module.css'
 import {
   COVERED_SIDE_COUNTS,
   SIDE_BEHAVIOR_OPTIONS,
@@ -48,29 +49,20 @@ function Sidebar() {
   } = useHouseCanvas()
 
   return (
-    <aside
-      style={{
-        width: 260,
-        height: '100%',
-        padding: 16,
-        overflowY: 'auto',
-        boxSizing: 'border-box',
-        flexShrink: 0,
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Settings</h2>
+    <aside className={styles.sidebar}>
+      <h2 className={styles.title}>Settings</h2>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
+      <fieldset className={styles.section}>
         <legend>Simulation</legend>
         <button
           type="button"
           onClick={() => setIsPlaying((current: boolean) => !current)}
-          style={{ padding: '6px 10px', cursor: 'pointer' }}
+          className={styles.button}
         >
           {isPlaying ? 'Pause' : 'Play'}
         </button>
-        <p style={{ margin: '8px 0 0 0' }}>Tick: {tickCount}</p>
-        <label style={{ display: 'block', marginTop: 8 }}>
+        <p className={styles.tick}>Tick: {tickCount}</p>
+        <label className={styles.checkboxLabel}>
           <input
             type="checkbox"
             checked={debugProfilingEnabled}
@@ -78,7 +70,7 @@ function Sidebar() {
           />{' '}
           Debug profiling logs
         </label>
-        <label style={{ display: 'block', marginTop: 8 }}>
+        <label className={styles.checkboxLabel}>
           <input
             type="checkbox"
             checked={showConnectionSideIndicators}
@@ -86,7 +78,7 @@ function Sidebar() {
           />{' '}
           Show connected sides
         </label>
-        <label htmlFor="simulation-speed" style={{ display: 'block', marginTop: 12 }}>
+        <label htmlFor="simulation-speed" className={styles.spacedLabel}>
           Speed: {simulationSpeed}
         </label>
         <input
@@ -97,11 +89,11 @@ function Sidebar() {
           step={1}
           value={simulationSpeed}
           onChange={(event) => setSimulationSpeed(Number(event.target.value))}
-          style={{ width: '100%' }}
+          className={styles.fullWidth}
         />
         {COVERED_SIDE_COUNTS.map((coveredSides: CoveredSideCount) => (
-          <div key={coveredSides} style={{ marginTop: 12 }}>
-            <label htmlFor={`coverage-${coveredSides}`} style={{ display: 'block' }}>
+          <div key={coveredSides} className={styles.group}>
+            <label htmlFor={`coverage-${coveredSides}`} className={styles.label}>
               {coveredSides} sides covered
             </label>
             <select
@@ -113,7 +105,7 @@ function Sidebar() {
                   setSideBehavior(coveredSides, value)
                 }
               }}
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             >
               {SIDE_BEHAVIOR_OPTIONS.map((option: SideBehavior) => (
                 <option key={option} value={option}>
@@ -125,16 +117,12 @@ function Sidebar() {
         ))}
       </fieldset>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
+      <fieldset className={styles.section}>
         <legend>Growth</legend>
-        <button
-          type="button"
-          onClick={addHouse}
-          style={{ padding: '6px 10px', cursor: 'pointer' }}
-        >
+        <button type="button" onClick={addHouse} className={styles.button}>
           Add house
         </button>
-        <label style={{ display: 'block', marginTop: 12 }}>
+        <label className={styles.spacedLabel}>
           <input
             type="checkbox"
             checked={allowOverlap}
@@ -144,9 +132,9 @@ function Sidebar() {
         </label>
       </fieldset>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
+      <fieldset className={styles.section}>
         <legend>Click Action</legend>
-        <label htmlFor="click-action" style={{ display: 'block' }}>
+        <label htmlFor="click-action" className={styles.label}>
           Action
         </label>
         <select
@@ -158,7 +146,7 @@ function Sidebar() {
               setClickAction(value)
             }
           }}
-          style={{ width: '100%' }}
+          className={styles.fullWidth}
         >
           {CLICK_ACTION_OPTIONS.map((option: ClickAction) => (
             <option key={option} value={option}>
@@ -168,8 +156,8 @@ function Sidebar() {
         </select>
 
         {clickAction === 'ripple' && (
-          <div style={{ marginTop: 12 }}>
-            <label htmlFor="ripple-color" style={{ display: 'block' }}>
+          <div className={styles.group}>
+            <label htmlFor="ripple-color" className={styles.label}>
               Color
             </label>
             <input
@@ -182,10 +170,10 @@ function Sidebar() {
                   color: event.target.value,
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
 
-            <label htmlFor="ripple-opacity" style={{ display: 'block', marginTop: 12 }}>
+            <label htmlFor="ripple-opacity" className={styles.spacedLabel}>
               Opacity: {rippleParams.opacity.toFixed(2)}
             </label>
             <input
@@ -201,10 +189,10 @@ function Sidebar() {
                   opacity: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
 
-            <label htmlFor="ripple-speed" style={{ display: 'block', marginTop: 12 }}>
+            <label htmlFor="ripple-speed" className={styles.spacedLabel}>
               Speed: {rippleParams.speed.toFixed(0)}
             </label>
             <input
@@ -220,10 +208,10 @@ function Sidebar() {
                   speed: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
 
-            <label htmlFor="ripple-range" style={{ display: 'block', marginTop: 12 }}>
+            <label htmlFor="ripple-range" className={styles.spacedLabel}>
               Range (hops): {rippleParams.range.toFixed(0)}
             </label>
             <input
@@ -239,10 +227,10 @@ function Sidebar() {
                   range: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
 
-            <label htmlFor="ripple-lifetime" style={{ display: 'block', marginTop: 12 }}>
+            <label htmlFor="ripple-lifetime" className={styles.spacedLabel}>
               Lifetime: {rippleParams.lifetime.toFixed(0)}ms
             </label>
             <input
@@ -258,13 +246,13 @@ function Sidebar() {
                   lifetime: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
           </div>
         )}
       </fieldset>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
+      <fieldset className={styles.section}>
         <legend>Geometry</legend>
         <label htmlFor="underside-scale">Underside: {undersideScale.toFixed(2)}</label>
         <input
@@ -275,9 +263,9 @@ function Sidebar() {
           step={0.01}
           value={undersideScale}
           onChange={(event) => setUndersideScale(Number(event.target.value))}
-          style={{ width: '100%' }}
+          className={styles.fullWidth}
         />
-        <label htmlFor="side-scale" style={{ display: 'block', marginTop: 12 }}>
+        <label htmlFor="side-scale" className={styles.spacedLabel}>
           Left/right side: {sideScale.toFixed(2)}
         </label>
         <input
@@ -288,9 +276,9 @@ function Sidebar() {
           step={0.01}
           value={sideScale}
           onChange={(event) => setSideScale(Number(event.target.value))}
-          style={{ width: '100%' }}
+          className={styles.fullWidth}
         />
-        <label htmlFor="roof-angle" style={{ display: 'block', marginTop: 12 }}>
+        <label htmlFor="roof-angle" className={styles.spacedLabel}>
           Angle: {Math.round(roofAngle)}deg
         </label>
         <input
@@ -301,13 +289,13 @@ function Sidebar() {
           step={1}
           value={roofAngle}
           onChange={(event) => setRoofAngle(Number(event.target.value))}
-          style={{ width: '100%' }}
+          className={styles.fullWidth}
         />
       </fieldset>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
+      <fieldset className={styles.section}>
         <legend>Style</legend>
-        <label htmlFor="fill-color" style={{ display: 'block' }}>
+        <label htmlFor="fill-color" className={styles.label}>
           Fill color
         </label>
         <input
@@ -316,7 +304,7 @@ function Sidebar() {
           value={fillColor}
           onChange={(event) => setFillColor(event.target.value)}
         />
-        <label htmlFor="stroke-color" style={{ display: 'block', marginTop: 12 }}>
+        <label htmlFor="stroke-color" className={styles.spacedLabel}>
           Stroke color
         </label>
         <input
@@ -327,18 +315,16 @@ function Sidebar() {
         />
       </fieldset>
 
-      <fieldset style={{ margin: 0 }}>
+      <fieldset className={styles.section}>
         <legend>View</legend>
-        <button type="button" onClick={resetView} style={{ padding: '6px 10px', cursor: 'pointer' }}>
+        <button type="button" onClick={resetView} className={styles.button}>
           Reset view
         </button>
       </fieldset>
 
-      <p style={{ color: '#666' }}>Drag to pan. Scroll to zoom.</p>
+      <p className={styles.hint}>Drag to pan. Scroll to zoom.</p>
     </aside>
   )
 }
 
 export default Sidebar
-
-

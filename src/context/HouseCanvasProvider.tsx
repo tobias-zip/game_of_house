@@ -19,20 +19,11 @@ import {
   type ClickAction,
   type RippleParams,
   type PropagatingRipple,
+  type CoveredSideCount,
+  type SideBehavior,
+  type SideBehaviorByCoverage,
+  DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE,
 } from '../types'
-
-type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
-type SideBehavior = 'die' | 'nothing' | 'grow'
-type SideBehaviorByCoverage = Record<CoveredSideCount, SideBehavior>
-
-const DEFAULT_SIDE_BEHAVIOR_BY_COVERAGE: SideBehaviorByCoverage = {
-  0: 'die',
-  1: 'grow',
-  2: 'grow',
-  3: 'nothing',
-  4: 'die',
-  5: 'die',
-}
 
 const DEFAULT_RIPPLE_PARAMS: RippleParams = {
   // speed is in "houses per second"

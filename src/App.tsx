@@ -1,19 +1,12 @@
 import HouseCanvas from './components/HouseCanvas'
 import { HouseCanvasProvider } from './context/HouseCanvasProvider'
 import Sidebar from './components/Sidebar'
+import styles from './App.module.css'
 
 function App() {
   return (
     <HouseCanvasProvider>
-      <div
-        style={{
-          display: 'flex',
-          width: '100vw',
-          height: '100vh',
-          overflow: 'hidden',
-          fontFamily: 'sans-serif',
-        }}
-      >
+      <div className={styles.layout}>
         <HouseCanvas />
         <Sidebar />
       </div>

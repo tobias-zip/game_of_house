@@ -1,9 +1,11 @@
-import type { HouseGeometry, HouseNode, Polygon, Transform } from '../../types'
+import type {
+  HouseGeometry,
+  HouseNode,
+  Polygon,
+  SideBehaviorByCoverage,
+  Transform,
+} from '../../types'
 import type { GrowTimingStats, SimulationTickProfile } from './profiling'
-
-export type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
-export type SideBehavior = 'die' | 'nothing' | 'grow'
-export type SideBehaviorByCoverage = Record<CoveredSideCount, SideBehavior>
 
 export type AABB = {
   minX: number

@@ -6,11 +6,10 @@ import type {
   ClickAction,
   RippleParams,
   PropagatingRipple,
+  CoveredSideCount,
+  SideBehavior,
+  SideBehaviorByCoverage,
 } from '../types'
-
-type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
-type SideBehavior = 'die' | 'nothing' | 'grow'
-type SideBehaviorByCoverage = Record<CoveredSideCount, SideBehavior>
 
 export type HouseCanvasContextValue = {
   zoom: number

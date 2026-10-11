@@ -13,6 +13,7 @@ import {
   hexToRgb,
 } from '../engine/actions/ripple'
 import type { Transform } from '../types'
+import styles from './HouseCanvas.module.css'
 
 const getCentroid = (polygon: { x: number; y: number }[]) => {
   let x = 0
@@ -347,7 +348,7 @@ function HouseCanvas() {
 
   return (
     <div
-      style={{ flex: 1, borderRight: '1px solid #ccc', overflow: 'hidden' }}
+      className={styles.viewport}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -355,14 +356,9 @@ function HouseCanvas() {
       onWheel={onWheel}
       onClick={onClick}
     >
-      <canvas
-        ref={canvasRef}
-        style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
-      />
+      <canvas ref={canvasRef} className={styles.canvas} />
     </div>
   )
 }
 
 export default HouseCanvas
-
-
