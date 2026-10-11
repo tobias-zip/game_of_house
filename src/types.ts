@@ -65,10 +65,3 @@ export type RippleParams = {
   range: number
   lifetime: number
 }
-
-export type PropagatingRipple = {
-  id: string
-  originHouseId: number
-  startTime: number
-  params: RippleParams
-}

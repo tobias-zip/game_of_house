@@ -1,0 +1,47 @@
+.layout {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Space the open settings panel takes on the right; centered overlays use it. */
+.settingsOpen {
+  --sidebar-space: 304px;
+}
+
+@media (max-width: 700px) {
+  .settingsOpen {
+    --sidebar-space: 0px;
+  }
+}
+
+.titleBlock {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  pointer-events: none;
+  text-shadow: 0 1px 4px var(--canvas-bg);
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.settingsToggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+}

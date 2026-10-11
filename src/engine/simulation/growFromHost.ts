@@ -8,7 +8,7 @@ import {
 } from '../../domain/house/geometry'
 import {
   connectExistingHouses,
-  connectHouses,
+  connectNewHouse,
   getCompatibleSides,
   getFreeSides,
 } from '../../domain/house/graph'
@@ -56,31 +56,28 @@ const transformedSegmentMatches = ({
 }
 
 const connectNearbyHouseSides = ({
-  houses,
-  newHouseId,
+  houseById,
+  newHouse,
   newHouseTransform,
   candidateNearbyHouseIds,
   worldState,
   houseGeometry,
 }: {
-  houses: HouseNode[]
-  newHouseId: number
+  houseById: Map<number, HouseNode>
+  newHouse: HouseNode
   newHouseTransform: Transform
   candidateNearbyHouseIds: Iterable<number>
   worldState: SimulationWorldState
   houseGeometry: HouseGeometry
 }) => {
-  let nextHouses = houses
-
   for (const nearbyHouseId of candidateNearbyHouseIds) {
-    if (nearbyHouseId === newHouseId) continue
+    if (nearbyHouseId === newHouse.id) continue
 
     const nearbyWorldData = worldState.byHouseId.get(nearbyHouseId)
     if (!nearbyWorldData) continue
 
-    const newHouse = nextHouses.find((house) => house.id === newHouseId)
-    const nearbyHouse = nextHouses.find((house) => house.id === nearbyHouseId)
-    if (!newHouse || !nearbyHouse) continue
+    const nearbyHouse = houseById.get(nearbyHouseId)
+    if (!nearbyHouse) continue
 
     const newHouseFreeSides = getFreeSides(newHouse)
     if (newHouseFreeSides.length === 0) break
@@ -104,13 +101,7 @@ const connectNearbyHouseSides = ({
 
         if (!matches) continue
 
-        nextHouses = connectExistingHouses(
-          nextHouses,
-          newHouseId,
-          newHouseSide,
-          nearbyHouseId,
-          nearbySide,
-        )
+        connectExistingHouses(newHouse, newHouseSide, nearbyHouse, nearbySide)
         linked = true
         break
       }
@@ -118,8 +109,6 @@ const connectNearbyHouseSides = ({
       if (linked) break
     }
   }
-
-  return nextHouses
 }
 
 const shuffleInPlace = <T>(items: T[]) => {
@@ -131,8 +120,10 @@ const shuffleInPlace = <T>(items: T[]) => {
   }
 }
 
+// Mutates `houseById` (which must hold houses owned by the caller) when a house is placed.
+// The caller adds the returned world data of the new house to the world state.
 export const tryGrowFromHost = ({
-  houses,
+  houseById,
   hostHouseId,
   houseGeometry,
   allowOverlap,
@@ -141,7 +132,7 @@ export const tryGrowFromHost = ({
   localHousePolygon,
   debugProfilingEnabled = false,
 }: {
-  houses: HouseNode[]
+  houseById: Map<number, HouseNode>
   hostHouseId: number
   houseGeometry: HouseGeometry
   allowOverlap: boolean
@@ -157,21 +148,19 @@ export const tryGrowFromHost = ({
   const indexUpdateMs = 0
 
   const hostLookupStart = debugProfilingEnabled ? performance.now() : 0
-  const hostHouse = houses.find((house) => house.id === hostHouseId)
+  const hostHouse = houseById.get(hostHouseId)
   growTiming.hostLookupMs = debugProfilingEnabled ? performance.now() - hostLookupStart : 0
   if (!hostHouse) {
-    return { houses, growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
+    return { growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
   }
 
   const freeSidesStart = debugProfilingEnabled ? performance.now() : 0
   const freeSides = getFreeSides(hostHouse)
   growTiming.freeSidesMs = debugProfilingEnabled ? performance.now() - freeSidesStart : 0
   if (freeSides.length === 0) {
-    return { houses, growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
+    return { growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
   }
 
-  const transformsStart = debugProfilingEnabled ? performance.now() : 0
-  growTiming.computeTransformsMs = debugProfilingEnabled ? performance.now() - transformsStart : 0
 
   const candidateBuildStart = debugProfilingEnabled ? performance.now() : 0
   const candidates: Array<{ hostSide: SideIndex; newHouseSide: SideIndex }> = []
@@ -194,7 +183,7 @@ export const tryGrowFromHost = ({
     ? performance.now() - parentTransformLookupStart
     : 0
   if (!parentTransform) {
-    return { houses, growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
+    return { growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
   }
 
   const attemptsLoopStart = debugProfilingEnabled ? performance.now() : 0
@@ -270,22 +259,16 @@ export const tryGrowFromHost = ({
     }
 
     const connectHousesStart = debugProfilingEnabled ? performance.now() : 0
-    let nextHouses = connectHouses(
-      houses,
-      hostHouse.id,
-      hostSide,
-      newHouseId,
-      newHouseSide,
-    )
+    const newHouse = connectNewHouse(houseById, hostHouse, hostSide, newHouseId, newHouseSide)
+    const polygon = newPolygon ?? transformPolygon(localHousePolygon, newTransform)
+    const bounds = newBounds ?? getPolygonBounds(polygon)
 
     if (!allowOverlap) {
-      const candidatePolygon = newPolygon ?? transformPolygon(localHousePolygon, newTransform)
-      const candidateBounds = newBounds ?? getPolygonBounds(candidatePolygon)
-      const nearbyHouseIds = querySpatialIndex(worldState.spatialIndex, candidateBounds)
+      const nearbyHouseIds = querySpatialIndex(worldState.spatialIndex, bounds)
 
-      nextHouses = connectNearbyHouseSides({
-        houses: nextHouses,
-        newHouseId,
+      connectNearbyHouseSides({
+        houseById,
+        newHouse,
         newHouseTransform: newTransform,
         candidateNearbyHouseIds: nearbyHouseIds,
         worldState,
@@ -302,16 +285,12 @@ export const tryGrowFromHost = ({
       : 0
 
     return {
-      houses: nextHouses,
       growTiming,
       candidateCount,
       candidateUniqueCount,
       indexQueryMs,
       indexUpdateMs,
-      newHouseTransform: newTransform,
-      newHousePolygon: newPolygon ?? transformPolygon(localHousePolygon, newTransform),
-      newHouseBounds:
-        newBounds ?? getPolygonBounds(transformPolygon(localHousePolygon, newTransform)),
+      newHouse: { transform: newTransform, polygon, bounds },
     }
   }
 
@@ -319,5 +298,5 @@ export const tryGrowFromHost = ({
     ? performance.now() - attemptsLoopStart
     : 0
 
-  return { houses, growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
+  return { growTiming, candidateCount, candidateUniqueCount, indexQueryMs, indexUpdateMs }
 }

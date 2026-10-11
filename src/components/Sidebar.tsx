@@ -1,12 +1,21 @@
+import { useState } from 'react'
 import { useHouseCanvas } from '../context/useHouseCanvas'
+import { getHousePolygon } from '../domain/house/geometry'
+import { createRandomRules, decodeRules, findPresetForRules, RULE_PRESETS } from '../rules'
+import { THEME_NAMES, THEMES, type ThemeName } from '../theme'
 import {
   COVERED_SIDE_COUNTS,
   SIDE_BEHAVIOR_OPTIONS,
   CLICK_ACTION_OPTIONS,
   type CoveredSideCount,
+  type HouseGeometry,
   type SideBehavior,
   type ClickAction,
 } from '../types'
+import styles from './Sidebar.module.css'
+
+const CUSTOM_PRESET_VALUE = 'custom'
+const COPY_STATUS_RESET_MS = 2000
 
 const isSideBehavior = (value: string): value is SideBehavior =>
   SIDE_BEHAVIOR_OPTIONS.includes(value as SideBehavior)
@@ -14,18 +23,47 @@ const isSideBehavior = (value: string): value is SideBehavior =>
 const isClickAction = (value: string): value is ClickAction =>
   CLICK_ACTION_OPTIONS.includes(value as ClickAction)
 
-function Sidebar() {
+const isThemeName = (value: string): value is ThemeName =>
+  THEME_NAMES.includes(value as ThemeName)
+
+function HouseShapePreview({ houseGeometry }: { houseGeometry: HouseGeometry }) {
+  const polygon = getHousePolygon(houseGeometry)
+  const xs = polygon.map((point) => point.x)
+  const ys = polygon.map((point) => point.y)
+  const padding = 4
+  const minX = Math.min(...xs) - padding
+  const minY = Math.min(...ys) - padding
+  const width = Math.max(...xs) - Math.min(...xs) + padding * 2
+  const height = Math.max(...ys) - Math.min(...ys) + padding * 2
+
+  return (
+    <svg
+      className={styles.shapePreview}
+      viewBox={`${minX} ${minY} ${width} ${height}`}
+      role="img"
+      aria-label="House shape preview"
+    >
+      <polygon points={polygon.map((point) => `${point.x},${point.y}`).join(' ')} />
+    </svg>
+  )
+}
+
+type SidebarProps = {
+  isOpen: boolean
+  onClose: () => void
+}
+
+function Sidebar({ isOpen, onClose }: SidebarProps) {
   const {
     addHouse,
+    resetWorld,
+    applyRules,
     allowOverlap,
     debugProfilingEnabled,
     showConnectionSideIndicators,
     fillColor,
-    isPlaying,
-    resetView,
     roofAngle,
-    setIsPlaying,
-    setSimulationSpeed,
+    houseGeometry,
     setSideScale,
     setAllowOverlap,
     setFillColor,
@@ -35,119 +73,169 @@ function Sidebar() {
     setDebugProfilingEnabled,
     setShowConnectionSideIndicators,
     setUndersideScale,
-    simulationSpeed,
     sideBehaviorByCoverage,
     sideScale,
     strokeColor,
-    tickCount,
     undersideScale,
+    themeName,
+    setThemeName,
+    colorBySides,
+    setColorBySides,
     clickAction,
     rippleParams,
     setClickAction,
     setRippleParams,
   } = useHouseCanvas()
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
+
+  const activePreset = findPresetForRules(sideBehaviorByCoverage)
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopyStatus('copied')
+    } catch {
+      setCopyStatus('failed')
+    }
+    window.setTimeout(() => setCopyStatus('idle'), COPY_STATUS_RESET_MS)
+  }
 
   return (
     <aside
-      style={{
-        width: 260,
-        height: '100%',
-        padding: 16,
-        overflowY: 'auto',
-        boxSizing: 'border-box',
-        flexShrink: 0,
-      }}
+      id="settings"
+      className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}
+      aria-label="Settings"
     >
-      <h2 style={{ marginTop: 0 }}>Settings</h2>
-
-      <fieldset style={{ margin: '0 0 12px 0' }}>
-        <legend>Simulation</legend>
-        <button
-          type="button"
-          onClick={() => setIsPlaying((current: boolean) => !current)}
-          style={{ padding: '6px 10px', cursor: 'pointer' }}
-        >
-          {isPlaying ? 'Pause' : 'Play'}
+      <div className={styles.header}>
+        <h2 className={styles.title}>Settings</h2>
+        <button type="button" onClick={onClose}>
+          Close
         </button>
-        <p style={{ margin: '8px 0 0 0' }}>Tick: {tickCount}</p>
-        <label style={{ display: 'block', marginTop: 8 }}>
-          <input
-            type="checkbox"
-            checked={debugProfilingEnabled}
-            onChange={(event) => setDebugProfilingEnabled(event.target.checked)}
-          />{' '}
-          Debug profiling logs
+      </div>
+
+      <details className={styles.section} open>
+        <summary>Rules</summary>
+        <label htmlFor="rule-preset" className={styles.label}>
+          Preset
         </label>
-        <label style={{ display: 'block', marginTop: 8 }}>
-          <input
-            type="checkbox"
-            checked={showConnectionSideIndicators}
-            onChange={(event) => setShowConnectionSideIndicators(event.target.checked)}
-          />{' '}
-          Show connected sides
-        </label>
-        <label htmlFor="simulation-speed" style={{ display: 'block', marginTop: 12 }}>
-          Speed: {simulationSpeed}
-        </label>
-        <input
-          id="simulation-speed"
-          type="range"
-          min={1}
-          max={10}
-          step={1}
-          value={simulationSpeed}
-          onChange={(event) => setSimulationSpeed(Number(event.target.value))}
-          style={{ width: '100%' }}
-        />
-        {COVERED_SIDE_COUNTS.map((coveredSides: CoveredSideCount) => (
-          <div key={coveredSides} style={{ marginTop: 12 }}>
-            <label htmlFor={`coverage-${coveredSides}`} style={{ display: 'block' }}>
-              {coveredSides} sides covered
+        <div className={styles.row}>
+          <select
+            id="rule-preset"
+            className={styles.grow}
+            value={activePreset?.code ?? CUSTOM_PRESET_VALUE}
+            onChange={(event) => {
+              const rules = decodeRules(event.target.value)
+              if (rules) applyRules(rules)
+            }}
+          >
+            {!activePreset && <option value={CUSTOM_PRESET_VALUE}>Custom</option>}
+            {RULE_PRESETS.map((preset) => (
+              <option key={preset.code} value={preset.code}>
+                {preset.name}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={() => applyRules(createRandomRules())}>
+            Random
+          </button>
+        </div>
+        <p className={styles.hint}>
+          {activePreset?.description ?? 'Your own rule set.'} Choosing a preset restarts the
+          world.
+        </p>
+
+        <p className={styles.label}>Connected sides → behavior</p>
+        <div className={styles.ruleGrid}>
+          {COVERED_SIDE_COUNTS.map((coveredSides: CoveredSideCount) => (
+            <label key={coveredSides} className={styles.rule}>
+              <span className={styles.ruleCount}>{coveredSides}</span>
+              <select
+                value={sideBehaviorByCoverage[coveredSides]}
+                onChange={(event) => {
+                  const { value } = event.target
+                  if (isSideBehavior(value)) {
+                    setSideBehavior(coveredSides, value)
+                  }
+                }}
+                aria-label={`${coveredSides} connected sides`}
+              >
+                {SIDE_BEHAVIOR_OPTIONS.map((option: SideBehavior) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </label>
-            <select
-              id={`coverage-${coveredSides}`}
-              value={sideBehaviorByCoverage[coveredSides]}
-              onChange={(event) => {
-                const { value } = event.target
-                if (isSideBehavior(value)) {
-                  setSideBehavior(coveredSides, value)
-                }
-              }}
-              style={{ width: '100%' }}
-            >
-              {SIDE_BEHAVIOR_OPTIONS.map((option: SideBehavior) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))}
-      </fieldset>
+          ))}
+        </div>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
-        <legend>Growth</legend>
-        <button
-          type="button"
-          onClick={addHouse}
-          style={{ padding: '6px 10px', cursor: 'pointer' }}
-        >
-          Add house
-        </button>
-        <label style={{ display: 'block', marginTop: 12 }}>
+        <label className={styles.checkboxLabel}>
           <input
             type="checkbox"
             checked={allowOverlap}
             onChange={(event) => setAllowOverlap(event.target.checked)}
-          />{' '}
+          />
           Allow overlap
         </label>
-      </fieldset>
+        <div className={styles.row}>
+          <button type="button" onClick={addHouse}>
+            Add house
+          </button>
+          <button type="button" onClick={resetWorld}>
+            Reset world
+          </button>
+        </div>
+      </details>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
-        <legend>Click Action</legend>
-        <label htmlFor="click-action" style={{ display: 'block' }}>
-          Action
+      <details className={styles.section} open>
+        <summary>Shape</summary>
+        <HouseShapePreview houseGeometry={houseGeometry} />
+        <label htmlFor="underside-scale" className={styles.label}>
+          Underside <span className={styles.value}>{undersideScale.toFixed(2)}</span>
+        </label>
+        <input
+          id="underside-scale"
+          type="range"
+          min={0.2}
+          max={1.8}
+          step={0.01}
+          value={undersideScale}
+          onChange={(event) => setUndersideScale(Number(event.target.value))}
+          className={styles.fullWidth}
+        />
+        <label htmlFor="side-scale" className={styles.label}>
+          Walls <span className={styles.value}>{sideScale.toFixed(2)}</span>
+        </label>
+        <input
+          id="side-scale"
+          type="range"
+          min={0.2}
+          max={1}
+          step={0.01}
+          value={sideScale}
+          onChange={(event) => setSideScale(Number(event.target.value))}
+          className={styles.fullWidth}
+        />
+        <label htmlFor="roof-angle" className={styles.label}>
+          Roof angle <span className={styles.value}>{Math.round(roofAngle)}°</span>
+        </label>
+        <input
+          id="roof-angle"
+          type="range"
+          min={20}
+          max={160}
+          step={1}
+          value={roofAngle}
+          onChange={(event) => setRoofAngle(Number(event.target.value))}
+          className={styles.fullWidth}
+        />
+        <p className={styles.hint}>Presets were tuned for the default shape.</p>
+      </details>
+
+      <details className={styles.section}>
+        <summary>Click action</summary>
+        <label htmlFor="click-action" className={styles.label}>
+          On click
         </label>
         <select
           id="click-action"
@@ -158,7 +246,7 @@ function Sidebar() {
               setClickAction(value)
             }
           }}
-          style={{ width: '100%' }}
+          className={styles.fullWidth}
         >
           {CLICK_ACTION_OPTIONS.map((option: ClickAction) => (
             <option key={option} value={option}>
@@ -168,8 +256,8 @@ function Sidebar() {
         </select>
 
         {clickAction === 'ripple' && (
-          <div style={{ marginTop: 12 }}>
-            <label htmlFor="ripple-color" style={{ display: 'block' }}>
+          <>
+            <label htmlFor="ripple-color" className={styles.label}>
               Color
             </label>
             <input
@@ -182,11 +270,10 @@ function Sidebar() {
                   color: event.target.value,
                 }))
               }
-              style={{ width: '100%' }}
             />
 
-            <label htmlFor="ripple-opacity" style={{ display: 'block', marginTop: 12 }}>
-              Opacity: {rippleParams.opacity.toFixed(2)}
+            <label htmlFor="ripple-opacity" className={styles.label}>
+              Opacity <span className={styles.value}>{rippleParams.opacity.toFixed(2)}</span>
             </label>
             <input
               id="ripple-opacity"
@@ -201,11 +288,11 @@ function Sidebar() {
                   opacity: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
 
-            <label htmlFor="ripple-speed" style={{ display: 'block', marginTop: 12 }}>
-              Speed: {rippleParams.speed.toFixed(0)}
+            <label htmlFor="ripple-speed" className={styles.label}>
+              Speed <span className={styles.value}>{rippleParams.speed.toFixed(0)}</span>
             </label>
             <input
               id="ripple-speed"
@@ -220,11 +307,11 @@ function Sidebar() {
                   speed: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
 
-            <label htmlFor="ripple-range" style={{ display: 'block', marginTop: 12 }}>
-              Range (hops): {rippleParams.range.toFixed(0)}
+            <label htmlFor="ripple-range" className={styles.label}>
+              Range <span className={styles.value}>{rippleParams.range.toFixed(0)} hops</span>
             </label>
             <input
               id="ripple-range"
@@ -239,11 +326,11 @@ function Sidebar() {
                   range: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
 
-            <label htmlFor="ripple-lifetime" style={{ display: 'block', marginTop: 12 }}>
-              Lifetime: {rippleParams.lifetime.toFixed(0)}ms
+            <label htmlFor="ripple-lifetime" className={styles.label}>
+              Lifetime <span className={styles.value}>{rippleParams.lifetime.toFixed(0)} ms</span>
             </label>
             <input
               id="ripple-lifetime"
@@ -258,87 +345,114 @@ function Sidebar() {
                   lifetime: Number(event.target.value),
                 }))
               }
-              style={{ width: '100%' }}
+              className={styles.fullWidth}
             />
-          </div>
+          </>
         )}
-      </fieldset>
+      </details>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
-        <legend>Geometry</legend>
-        <label htmlFor="underside-scale">Underside: {undersideScale.toFixed(2)}</label>
-        <input
-          id="underside-scale"
-          type="range"
-          min={0.2}
-          max={1.8}
-          step={0.01}
-          value={undersideScale}
-          onChange={(event) => setUndersideScale(Number(event.target.value))}
-          style={{ width: '100%' }}
-        />
-        <label htmlFor="side-scale" style={{ display: 'block', marginTop: 12 }}>
-          Left/right side: {sideScale.toFixed(2)}
+      <details className={styles.section}>
+        <summary>Appearance</summary>
+        <label htmlFor="theme" className={styles.label}>
+          Theme
         </label>
-        <input
-          id="side-scale"
-          type="range"
-          min={0.2}
-          max={1}
-          step={0.01}
-          value={sideScale}
-          onChange={(event) => setSideScale(Number(event.target.value))}
-          style={{ width: '100%' }}
-        />
-        <label htmlFor="roof-angle" style={{ display: 'block', marginTop: 12 }}>
-          Angle: {Math.round(roofAngle)}deg
-        </label>
-        <input
-          id="roof-angle"
-          type="range"
-          min={20}
-          max={160}
-          step={1}
-          value={roofAngle}
-          onChange={(event) => setRoofAngle(Number(event.target.value))}
-          style={{ width: '100%' }}
-        />
-      </fieldset>
+        <select
+          id="theme"
+          value={themeName}
+          onChange={(event) => {
+            const { value } = event.target
+            if (isThemeName(value)) setThemeName(value)
+          }}
+          className={styles.fullWidth}
+        >
+          {THEME_NAMES.map((name) => (
+            <option key={name} value={name}>
+              {THEMES[name].label}
+            </option>
+          ))}
+        </select>
 
-      <fieldset style={{ margin: '0 0 12px 0' }}>
-        <legend>Style</legend>
-        <label htmlFor="fill-color" style={{ display: 'block' }}>
-          Fill color
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={colorBySides}
+            onChange={(event) => setColorBySides(event.target.checked)}
+          />
+          Color by connected sides
         </label>
-        <input
-          id="fill-color"
-          type="color"
-          value={fillColor}
-          onChange={(event) => setFillColor(event.target.value)}
-        />
-        <label htmlFor="stroke-color" style={{ display: 'block', marginTop: 12 }}>
-          Stroke color
-        </label>
-        <input
-          id="stroke-color"
-          type="color"
-          value={strokeColor}
-          onChange={(event) => setStrokeColor(event.target.value)}
-        />
-      </fieldset>
+        {colorBySides && (
+          <ol className={styles.legend} aria-label="Connected sides legend">
+            {THEMES[themeName].coveredSidesPalette.map((color, coveredSides) => (
+              <li key={color}>
+                <span className={styles.swatch} style={{ background: color }} />
+                {coveredSides}
+              </li>
+            ))}
+          </ol>
+        )}
 
-      <fieldset style={{ margin: 0 }}>
-        <legend>View</legend>
-        <button type="button" onClick={resetView} style={{ padding: '6px 10px', cursor: 'pointer' }}>
-          Reset view
+        <div className={styles.row}>
+          {!colorBySides && (
+            <label className={styles.colorField}>
+              <input
+                type="color"
+                value={fillColor}
+                onChange={(event) => setFillColor(event.target.value)}
+              />
+              Fill
+            </label>
+          )}
+          <label className={styles.colorField}>
+            <input
+              type="color"
+              value={strokeColor}
+              onChange={(event) => setStrokeColor(event.target.value)}
+            />
+            Outline
+          </label>
+        </div>
+      </details>
+
+      <details className={styles.section}>
+        <summary>Share</summary>
+        <p className={styles.hint}>
+          The link holds the rules and the house shape, so others can grow the same setup.
+        </p>
+        <button type="button" onClick={copyLink}>
+          {copyStatus === 'copied'
+            ? 'Link copied'
+            : copyStatus === 'failed'
+              ? 'Copy failed: use the address bar'
+              : 'Copy link'}
         </button>
-      </fieldset>
+      </details>
 
-      <p style={{ color: '#666' }}>Drag to pan. Scroll to zoom.</p>
+      <details className={styles.section}>
+        <summary>Debug</summary>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={showConnectionSideIndicators}
+            onChange={(event) => setShowConnectionSideIndicators(event.target.checked)}
+          />
+          Show connected sides
+        </label>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={debugProfilingEnabled}
+            onChange={(event) => setDebugProfilingEnabled(event.target.checked)}
+          />
+          Profiling logs in console
+        </label>
+      </details>
+
+      <p className={styles.footer}>
+        Drag to pan · scroll or pinch to zoom · click a house for a ripple · Space to
+        play/pause
+      </p>
     </aside>
   )
 }
 
 export default Sidebar
-
-

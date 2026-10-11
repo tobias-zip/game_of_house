@@ -23,14 +23,10 @@ export const getPolygonBounds = (polygon: Polygon): AABB => {
   return { minX, minY, maxX, maxY }
 }
 
-export const getGeometryKey = (houseGeometry: HouseGeometry) =>
-  [
-    houseGeometry.undersideLength,
-    houseGeometry.sideLength,
-    houseGeometry.roofHeight,
-  ].join(':')
-
 const toCellCoord = (value: number, cellSize: number) => Math.floor(value / cellSize)
+
+// Numeric cell keys avoid allocating strings; unique while |cellY| < CELL_KEY_STRIDE / 2.
+const CELL_KEY_STRIDE = 2 ** 26
 
 const getCellKeysForBounds = (bounds: AABB, cellSize: number) => {
   const minCellX = toCellCoord(bounds.minX, cellSize)
@@ -38,11 +34,11 @@ const getCellKeysForBounds = (bounds: AABB, cellSize: number) => {
   const minCellY = toCellCoord(bounds.minY, cellSize)
   const maxCellY = toCellCoord(bounds.maxY, cellSize)
 
-  const keys: string[] = []
+  const keys: number[] = []
 
   for (let cellX = minCellX; cellX <= maxCellX; cellX += 1) {
     for (let cellY = minCellY; cellY <= maxCellY; cellY += 1) {
-      keys.push(`${cellX}:${cellY}`)
+      keys.push(cellX * CELL_KEY_STRIDE + cellY)
     }
   }
 
@@ -51,7 +47,7 @@ const getCellKeysForBounds = (bounds: AABB, cellSize: number) => {
 
 const createSpatialIndex = (cellSize: number): SpatialIndex => ({
   cellSize,
-  cells: new Map<string, Set<number>>(),
+  cells: new Map<number, Set<number>>(),
 })
 
 export const insertIntoSpatialIndex = (
@@ -105,28 +101,6 @@ export const querySpatialIndex = (spatialIndex: SpatialIndex, bounds: AABB) => {
   return houseIds
 }
 
-export const worldStateNeedsRebuild = ({
-  worldState,
-  houses,
-  houseGeometry,
-}: {
-  worldState?: SimulationWorldState
-  houses: HouseNode[]
-  houseGeometry: HouseGeometry
-}) => {
-  if (!worldState) return true
-  if (worldState.geometryKey !== getGeometryKey(houseGeometry)) return true
-  if (worldState.byHouseId.size !== houses.length) return true
-
-  for (const house of houses) {
-    if (!worldState.byHouseId.has(house.id)) {
-      return true
-    }
-  }
-
-  return false
-}
-
 export const buildWorldState = ({
   houses,
   houseGeometry,
@@ -158,8 +132,23 @@ export const buildWorldState = ({
   }
 
   return {
-    geometryKey: getGeometryKey(houseGeometry),
     byHouseId,
     spatialIndex,
+    blockedHouseIds: new Set<number>(),
   } satisfies SimulationWorldState
+}
+
+// Unblocks every house whose growth candidates could have overlapped the removed house.
+// Candidates touch their host, so they lie within one cell size of the host's bounds.
+export const unblockHousesNear = (worldState: SimulationWorldState, removedBounds: AABB) => {
+  const { cellSize } = worldState.spatialIndex
+  const nearbyBounds: AABB = {
+    minX: removedBounds.minX - cellSize,
+    minY: removedBounds.minY - cellSize,
+    maxX: removedBounds.maxX + cellSize,
+    maxY: removedBounds.maxY + cellSize,
+  }
+  for (const houseId of querySpatialIndex(worldState.spatialIndex, nearbyBounds)) {
+    worldState.blockedHouseIds.delete(houseId)
+  }
 }

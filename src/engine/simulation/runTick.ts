@@ -1,16 +1,15 @@
 import { getHousePolygon, IDENTITY_TRANSFORM } from '../../domain/house/geometry'
-import type { HouseNode } from '../../types'
+import type { CoveredSideCount, HouseNode } from '../../types'
 import { EMPTY_GROW_TIMING_STATS } from './profiling'
 import type { RunSimulationTickInput, RunSimulationTickResult } from './types'
 import { tryGrowFromHost } from './growFromHost'
 import {
-  buildWorldState,
   insertIntoSpatialIndex,
   removeFromSpatialIndex,
-  worldStateNeedsRebuild,
+  unblockHousesNear,
 } from './worldState'
 
-const countCoveredSides = (house: HouseNode) => house.sides.filter(Boolean).length as 0 | 1 | 2 | 3 | 4 | 5
+const countCoveredSides = (house: HouseNode) => house.sides.filter(Boolean).length as CoveredSideCount
 
 export const runSimulationTick = ({
   houses,
@@ -24,13 +23,7 @@ export const runSimulationTick = ({
   const tickStart = debugProfilingEnabled ? performance.now() : 0
 
   if (houses.length === 0) {
-    const result: RunSimulationTickResult = {
-      houses,
-      nextHouseId,
-      worldState: worldStateNeedsRebuild({ worldState, houses, houseGeometry })
-        ? buildWorldState({ houses, houseGeometry })
-        : worldState,
-    }
+    const result: RunSimulationTickResult = { houses, nextHouseId, worldState }
 
     if (debugProfilingEnabled) {
       result.profile = {
@@ -44,7 +37,6 @@ export const runSimulationTick = ({
           growSuccesses: 0,
         },
         timeStats: {
-          computeTransformsMs: 0,
           classifyMs: 0,
           cleanupFilterMs: 0,
           survivorIdsBuildMs: 0,
@@ -56,7 +48,7 @@ export const runSimulationTick = ({
           indexUpdateMs: 0,
           growthCandidateCount: 0,
           growthCandidateUniqueCount: 0,
-          spatialIndexCells: result.worldState?.spatialIndex.cells.size ?? 0,
+          spatialIndexCells: worldState.spatialIndex.cells.size,
           totalMs: performance.now() - tickStart,
           growingStats: {
             ...EMPTY_GROW_TIMING_STATS,
@@ -69,11 +61,8 @@ export const runSimulationTick = ({
     return result
   }
 
-  const worldStateStart = debugProfilingEnabled ? performance.now() : 0
-  const nextWorldState = worldStateNeedsRebuild({ worldState, houses, houseGeometry })
-    ? buildWorldState({ houses, houseGeometry })
-    : worldState!
-  const computeTransformsMs = debugProfilingEnabled ? performance.now() - worldStateStart : 0
+  // The world state is updated in place; it always matches `houses` on entry.
+  const nextWorldState = worldState
 
   const localHousePolygon = getHousePolygon(houseGeometry)
 
@@ -105,6 +94,7 @@ export const runSimulationTick = ({
     ? performance.now() - survivorIdsBuildStart
     : 0
 
+  // Every survivor is copied here, so growth below may mutate them through `houseById`.
   const cleanupRemapStart = debugProfilingEnabled ? performance.now() : 0
   nextHouses = nextHouses.map((house) => {
     const parentStillAlive = house.parentId !== null && survivorIds.has(house.parentId)
@@ -130,10 +120,13 @@ export const runSimulationTick = ({
     if (!deadWorldData) continue
     removeFromSpatialIndex(nextWorldState.spatialIndex, deadHouseId, deadWorldData.bounds)
     nextWorldState.byHouseId.delete(deadHouseId)
+    nextWorldState.blockedHouseIds.delete(deadHouseId)
+    unblockHousesNear(nextWorldState, deadWorldData.bounds)
   }
   const cacheCleanupMs = debugProfilingEnabled ? performance.now() - cacheCleanupStart : 0
   const cleanupTotalMs = debugProfilingEnabled ? performance.now() - cleanupStart : 0
 
+  const houseById = new Map(nextHouses.map((house) => [house.id, house]))
   let nextId = nextHouseId
   let growAttempts = 0
   let growSuccesses = 0
@@ -151,11 +144,12 @@ export const runSimulationTick = ({
   for (const hostHouseId of growIds) {
     const hostStillAlive = survivorIds.has(hostHouseId)
     if (!hostStillAlive) continue
+    if (!allowOverlap && nextWorldState.blockedHouseIds.has(hostHouseId)) continue
 
     growAttempts += 1
 
     const grown = tryGrowFromHost({
-      houses: nextHouses,
+      houseById,
       hostHouseId,
       houseGeometry,
       allowOverlap,
@@ -173,7 +167,6 @@ export const runSimulationTick = ({
     growingStats.totalGrowCalls += 1
     growingStats.hostLookupMs += grown.growTiming.hostLookupMs
     growingStats.freeSidesMs += grown.growTiming.freeSidesMs
-    growingStats.computeTransformsMs += grown.growTiming.computeTransformsMs
     growingStats.candidateBuildMs += grown.growTiming.candidateBuildMs
     growingStats.parentTransformLookupMs += grown.growTiming.parentTransformLookupMs
     growingStats.attemptsLoopMs += grown.growTiming.attemptsLoopMs
@@ -190,20 +183,15 @@ export const runSimulationTick = ({
     growingStats.overlapChecks += grown.growTiming.overlapChecks
     growingStats.overlapHits += grown.growTiming.overlapHits
 
-    if (grown.houses !== nextHouses) {
-      nextHouses = grown.houses
+    if (!grown.newHouse && !allowOverlap) {
+      nextWorldState.blockedHouseIds.add(hostHouseId)
+    }
 
-      if (grown.newHouseTransform && grown.newHousePolygon && grown.newHouseBounds) {
-        const indexUpdateStart = debugProfilingEnabled ? performance.now() : 0
-        nextWorldState.byHouseId.set(nextId, {
-          transform: grown.newHouseTransform,
-          polygon: grown.newHousePolygon,
-          bounds: grown.newHouseBounds,
-        })
-        insertIntoSpatialIndex(nextWorldState.spatialIndex, nextId, grown.newHouseBounds)
-        const indexUpdateDuration = debugProfilingEnabled ? performance.now() - indexUpdateStart : 0
-        indexUpdateMs += indexUpdateDuration
-      }
+    if (grown.newHouse) {
+      const indexUpdateStart = debugProfilingEnabled ? performance.now() : 0
+      nextWorldState.byHouseId.set(nextId, grown.newHouse)
+      insertIntoSpatialIndex(nextWorldState.spatialIndex, nextId, grown.newHouse.bounds)
+      indexUpdateMs += debugProfilingEnabled ? performance.now() - indexUpdateStart : 0
 
       survivorIds.add(nextId)
       nextId += 1
@@ -211,6 +199,8 @@ export const runSimulationTick = ({
     }
   }
   const growMs = debugProfilingEnabled ? performance.now() - growStart : 0
+
+  nextHouses = Array.from(houseById.values())
 
   const result: RunSimulationTickResult = {
     houses: nextHouses,
@@ -230,7 +220,6 @@ export const runSimulationTick = ({
         growSuccesses,
       },
       timeStats: {
-        computeTransformsMs,
         classifyMs,
         cleanupFilterMs,
         survivorIdsBuildMs,

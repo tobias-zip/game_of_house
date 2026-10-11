@@ -29,69 +29,44 @@ export const getCompatibleSides = (side: SideIndex) => {
   return ALL_SIDES.filter((candidate) => SIDE_KIND_BY_INDEX[candidate] === SIDE_KIND_BY_INDEX[side])
 }
 
-export const connectHouses = (
-  houses: HouseNode[],
-  hostHouseId: number,
+// The connect functions mutate the given houses. Callers pass houses they own,
+// for example copies made for the current tick, never houses already in React state.
+export const connectNewHouse = (
+  houseById: Map<number, HouseNode>,
+  hostHouse: HouseNode,
   hostSide: SideIndex,
   newHouseId: number,
   newHouseSide: SideIndex,
 ) => {
-  const nextHouses = houses.map((house) => {
-    if (house.id !== hostHouseId) return house
-
-    const updatedSides = [...house.sides]
-    updatedSides[hostSide] = { houseId: newHouseId, side: newHouseSide }
-    return { ...house, sides: updatedSides }
-  })
+  hostHouse.sides[hostSide] = { houseId: newHouseId, side: newHouseSide }
 
   const newHouseSides = createEmptySides()
-  newHouseSides[newHouseSide] = { houseId: hostHouseId, side: hostSide }
+  newHouseSides[newHouseSide] = { houseId: hostHouse.id, side: hostSide }
 
-  nextHouses.push({
+  const newHouse: HouseNode = {
     id: newHouseId,
     sides: newHouseSides,
-    parentId: hostHouseId,
+    parentId: hostHouse.id,
     parentSide: hostSide,
     ownSide: newHouseSide,
     rootTransform: null,
-  })
-
-  return nextHouses
+  }
+  houseById.set(newHouseId, newHouse)
+  return newHouse
 }
 
 export const connectExistingHouses = (
-  houses: HouseNode[],
-  firstHouseId: number,
+  firstHouse: HouseNode,
   firstSide: SideIndex,
-  secondHouseId: number,
+  secondHouse: HouseNode,
   secondSide: SideIndex,
 ) => {
-  if (firstHouseId === secondHouseId) return houses
+  if (firstHouse === secondHouse) return
+  if (firstHouse.sides[firstSide] || secondHouse.sides[secondSide]) return
 
-  const firstHouse = houses.find((house) => house.id === firstHouseId)
-  const secondHouse = houses.find((house) => house.id === secondHouseId)
-  if (!firstHouse || !secondHouse) return houses
-
-  const firstConnection = firstHouse.sides[firstSide]
-  const secondConnection = secondHouse.sides[secondSide]
-
-  if (firstConnection || secondConnection) return houses
-
-  return houses.map((house) => {
-    if (house.id === firstHouseId) {
-      const sides = [...house.sides]
-      sides[firstSide] = { houseId: secondHouseId, side: secondSide }
-      return { ...house, sides }
-    }
-
-    if (house.id === secondHouseId) {
-      const sides = [...house.sides]
-      sides[secondSide] = { houseId: firstHouseId, side: firstSide }
-      return { ...house, sides }
-    }
-
-    return house
-  })
+  firstHouse.sides[firstSide] = { houseId: secondHouse.id, side: secondSide }
+  secondHouse.sides[secondSide] = { houseId: firstHouse.id, side: firstSide }
 }
 
-
+export const copyHouses = (houses: HouseNode[]) =>
+  new Map(houses.map((house) => [house.id, { ...house, sides: [...house.sides] }]))

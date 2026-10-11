@@ -1,4 +1,4 @@
-import type { HouseNode } from '../../types'
+import type { HouseNode, RippleParams } from '../../types'
 
 export type RippleEffect = {
   houseId: number
@@ -63,51 +63,9 @@ export function rippleReachDelayMs(distance: number, speed: number): number {
 }
 
 /**
- * Determines if a house should be colored in the ripple effect.
- * Returns true if the ripple wave has reached the house.
+ * Time (ms) after which a ripple can no longer affect any house:
+ * travel time to its maximum range plus the per-house lifetime.
  */
-export function isHouseInRippleWave(
-  elapsedTime: number,
-  distance: number,
-  speed: number
-): boolean {
-  // Distance in time = distance / speed (assuming distance in units, speed in units/ms)
-  const distanceInTime = (distance / speed) * 1000
-  return elapsedTime >= distanceInTime
+export function rippleDurationMs(params: RippleParams): number {
+  return rippleReachDelayMs(params.range, params.speed) + params.lifetime
 }
-
-/**
- * Converts a hex color to RGB values
- */
-export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : null
-}
-
-/**
- * Blends two RGBA colors additively
- */
-export function blendRgbaAdditive(
-  r1: number,
-  g1: number,
-  b1: number,
-  a1: number,
-  r2: number,
-  g2: number,
-  b2: number,
-  a2: number
-): [number, number, number, number] {
-  return [
-    Math.min(r1 + r2 * a2, 255),
-    Math.min(g1 + g2 * a2, 255),
-    Math.min(b1 + b2 * a2, 255),
-    Math.min(a1 + a2, 1),
-  ]
-}
-

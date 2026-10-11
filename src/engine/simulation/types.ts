@@ -1,9 +1,11 @@
-import type { HouseGeometry, HouseNode, Polygon, Transform } from '../../types'
+import type {
+  HouseGeometry,
+  HouseNode,
+  Polygon,
+  SideBehaviorByCoverage,
+  Transform,
+} from '../../types'
 import type { GrowTimingStats, SimulationTickProfile } from './profiling'
-
-export type CoveredSideCount = 0 | 1 | 2 | 3 | 4 | 5
-export type SideBehavior = 'die' | 'nothing' | 'grow'
-export type SideBehaviorByCoverage = Record<CoveredSideCount, SideBehavior>
 
 export type AABB = {
   minX: number
@@ -20,13 +22,15 @@ export type HouseWorldData = {
 
 export type SpatialIndex = {
   cellSize: number
-  cells: Map<string, Set<number>>
+  cells: Map<number, Set<number>>
 }
 
 export type SimulationWorldState = {
-  geometryKey: string
   byHouseId: Map<number, HouseWorldData>
   spatialIndex: SpatialIndex
+  // Houses whose growth candidates all overlapped existing houses. Placing houses never
+  // frees a slot, so they stay blocked until a nearby house dies.
+  blockedHouseIds: Set<number>
 }
 
 export type RunSimulationTickInput = {
@@ -35,25 +39,28 @@ export type RunSimulationTickInput = {
   houseGeometry: HouseGeometry
   allowOverlap: boolean
   nextHouseId: number
-  worldState?: SimulationWorldState
+  worldState: SimulationWorldState
   debugProfilingEnabled?: boolean
 }
 
 export type RunSimulationTickResult = {
   houses: HouseNode[]
   nextHouseId: number
-  worldState?: SimulationWorldState
+  worldState: SimulationWorldState
   profile?: SimulationTickProfile
 }
 
 export type TryGrowFromHostResult = {
-  houses: HouseNode[]
   growTiming: GrowTimingStats
   candidateCount: number
   candidateUniqueCount: number
   indexQueryMs: number
   indexUpdateMs: number
-  newHouseTransform?: Transform
-  newHousePolygon?: Polygon
-  newHouseBounds?: AABB
+  newHouse?: HouseWorldData
+}
+
+// Houses and their cached world data; always replaced together.
+export type SimulationWorld = {
+  houses: HouseNode[]
+  worldState: SimulationWorldState
 }
