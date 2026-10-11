@@ -47,8 +47,6 @@ come from project-defaults and are kept in sync with it; change them there first
   so panning, zooming and ripples never re-render React.
 - Runtime and package manager: Node.js, pnpm workspaces (only `client/`),
   TypeScript. Versions live in `package.json` and `.nvmrc` only.
-- Deployment: GitHub Pages via `.github/workflows/deploy.yml` on every push to `main`.
-  Vite builds with `base: "/game_of_house"`; the workflow uploads `client/dist`.
 - Environment setup: `pnpm install`.
 - Repository map (the app lives in `client/`):
   - `client/src/types.ts` — shared types and rule constants (houses, sides, geometry, rule

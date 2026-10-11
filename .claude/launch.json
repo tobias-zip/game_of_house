@@ -6,7 +6,7 @@
             "runtimeExecutable": "pnpm",
             "runtimeArgs": [
                 "--filter",
-                "@game_of_house/client",
+                "@overhouse/client",
                 "dev",
                 "--port",
                 "5181",

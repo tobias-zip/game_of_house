@@ -17,7 +17,7 @@ function TitleBlock() {
 
     return (
         <header className={styles.titleBlock}>
-            <h1 className={styles.title}>Game of House</h1>
+            <h1 className={styles.title}>Overhouse</h1>
             <p className={styles.subtitle}>{preset ? preset.name : "Custom rules"}</p>
         </header>
     );

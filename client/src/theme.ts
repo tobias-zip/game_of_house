@@ -27,7 +27,7 @@ export const THEMES: Record<ThemeName, Theme> = {
 export const THEME_NAMES = Object.keys(THEMES) as ThemeName[];
 export const DEFAULT_THEME: ThemeName = "night";
 
-const THEME_STORAGE_KEY = "game-of-house:theme";
+const THEME_STORAGE_KEY = "overhouse:theme";
 
 const isThemeName = (value: string | null): value is ThemeName => value !== null && value in THEMES;
 

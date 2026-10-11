@@ -1,7 +1,6 @@
-# Game of House
+# Overhouse
 
 A cellular-automaton toy in the spirit of Conway's Game of Life, but with houses.
-Play it at <https://tobias-zip.github.io/game_of_house/>.
 
 ## Houses
 

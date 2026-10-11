@@ -1,5 +1,5 @@
 {
-    "name": "game_of_house",
+    "name": "overhouse",
     "private": true,
     "type": "module",
     "packageManager": "pnpm@12.11.2",
@@ -14,7 +14,7 @@
         "typecheck": "pnpm -r --if-present typecheck",
         "test": "vitest run --passWithNoTests",
         "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-        "preview": "pnpm --filter @game_of_house/client preview"
+        "preview": "pnpm --filter @overhouse/client preview"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.15",

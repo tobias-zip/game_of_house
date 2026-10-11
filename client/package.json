@@ -1,5 +1,5 @@
 {
-    "name": "@game_of_house/client",
+    "name": "@overhouse/client",
     "private": true,
     "type": "module",
     "scripts": {
