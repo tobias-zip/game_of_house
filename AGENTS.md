@@ -107,7 +107,9 @@ checks that cannot be run and explain why.
   directly; GitHub rejects it, and a Claude Code hook blocks the push.
 - Work on a branch with a short descriptive name, push it, and open a pull request
   with `gh pr create`. CI must pass before merging. Pull requests are squash-merged,
-  so the title becomes the commit message on `main`: write it as one.
+  so the title becomes the commit message on `main`: write it as one. Use a merge
+  commit only when the commits must keep their hashes, such as a reformat listed in
+  `.git-blame-ignore-revs`.
 - Merge only when the user asks. After merging, the deploy runs on its own.
 
 ## Clarification and scope
