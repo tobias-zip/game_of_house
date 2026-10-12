@@ -1,10 +1,13 @@
-# Builds the client and serves it with nginx (used by Dokploy).
-FROM node:24-alpine AS build
+# Production image, built by Dokploy: serves the built client with nginx.
+FROM node:24-alpine AS deps
 WORKDIR /app
 RUN corepack enable
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm build
+RUN pnpm install --frozen-lockfile
 
-FROM nginx:1.29-alpine
+FROM deps AS client-build
+RUN pnpm --filter @overhouse/client build
+
+FROM nginx:1.29-alpine AS client
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/client/dist /usr/share/nginx/html
+COPY --from=client-build /app/client/dist /usr/share/nginx/html

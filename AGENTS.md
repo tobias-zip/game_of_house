@@ -16,7 +16,7 @@ come from project-defaults and are kept in sync with it; change them there first
   generative-art piece than to a cartoon game. Default theme "Night" (dark, warm accent);
   "Classic" is the light alternative. Avoid decorative effects that don't help reading the
   pattern.
-- Stage: Prototype, client only, no backend. Pushes to `main` are deployed to
+- Stage: Prototype, client only, no backend. Merges to `main` are deployed to
   https://overhouse.tobias.world by Dokploy, which builds the `Dockerfile` (static
   files served by nginx, `nginx.conf`).
   - Houses: each house is a node in a connection graph. Sides only connect to sides of
@@ -100,6 +100,17 @@ Run all commands from the repository root.
 
 Never invent missing commands. When tooling changes, update this table. Report
 checks that cannot be run and explain why.
+
+## Git workflow
+
+- `main` is live: every merge to it is deployed. Never commit or push to `main`
+  directly; GitHub rejects it, and a Claude Code hook blocks the push.
+- Work on a branch with a short descriptive name, push it, and open a pull request
+  with `gh pr create`. CI must pass before merging. Pull requests are squash-merged,
+  so the title becomes the commit message on `main`: write it as one. Use a merge
+  commit only when the commits must keep their hashes, such as a reformat listed in
+  `.git-blame-ignore-revs`.
+- Merge only when the user asks. After merging, the deploy runs on its own.
 
 ## Clarification and scope
 
