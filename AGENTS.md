@@ -16,7 +16,9 @@ come from project-defaults and are kept in sync with it; change them there first
   generative-art piece than to a cartoon game. Default theme "Night" (dark, warm accent);
   "Classic" is the light alternative. Avoid decorative effects that don't help reading the
   pattern.
-- Stage: Prototype, client only, no backend.
+- Stage: Prototype, client only, no backend. Pushes to `main` are deployed to
+  https://overhouse.tobias.world by Dokploy, which builds the `Dockerfile` (static
+  files served by nginx, `nginx.conf`).
   - Houses: each house is a node in a connection graph. Sides only connect to sides of
     the same kind (underside to underside, wall to wall, roof to roof). New houses are
     placed by transforming them onto a free side of a host house; overlapping placements
