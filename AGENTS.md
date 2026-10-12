@@ -41,6 +41,8 @@ come from project-defaults and are kept in sync with it; change them there first
     rules (presets, Random, rule table, overlap, add house, reset world), shape (with
     preview), click action, appearance (theme, color by connected sides, colors), share
     link and debug. Below 700px width the panel becomes a bottom sheet.
+- Analytics: page views and sessions go to Umami at https://umami.tobias.world
+  (site "overhouse"), via the tracker tag in `client/index.html`.
 - Frontend: React + TypeScript with CSS Modules, built with Vite. App state lives
   in a React context (`HouseCanvasProvider`), which runs the tick loop with
   `setInterval`. The simulation runs outside React state updaters (StrictMode calls
