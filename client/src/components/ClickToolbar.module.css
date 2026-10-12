@@ -1,0 +1,90 @@
+.panel {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    width: 120px;
+    transform: translateY(-50%);
+}
+
+.toolbar {
+    display: grid;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    background: var(--panel-bg);
+    overflow: hidden;
+}
+
+.tool {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    text-align: left;
+}
+
+.tool + .tool {
+    border-top: 1px solid var(--panel-border);
+}
+
+.tool:hover {
+    color: var(--text);
+}
+
+.tool[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-contrast);
+}
+
+.icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+}
+
+/* Positioned below the toolbar so its changing length never moves the buttons. */
+.hint {
+    position: absolute;
+    top: 100%;
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 0.92em;
+    line-height: 1.4;
+    text-shadow: 0 0 8px var(--canvas-bg);
+}
+
+/* On phones the tools become an icon row above the play bar. */
+@media (max-width: 700px) {
+    .panel {
+        top: auto;
+        bottom: 88px;
+        left: 50%;
+        width: auto;
+        transform: translateX(-50%);
+    }
+
+    .toolbar {
+        grid-auto-flow: column;
+    }
+
+    .tool {
+        padding: 8px 12px;
+    }
+
+    .tool + .tool {
+        border-top: 0;
+        border-left: 1px solid var(--panel-border);
+    }
+
+    .label,
+    .hint {
+        display: none;
+    }
+}

@@ -21,20 +21,21 @@
     top: 16px;
     left: 16px;
     pointer-events: none;
-    text-shadow: 0 1px 4px var(--canvas-bg);
+    text-shadow: 0 0 12px var(--canvas-bg);
 }
 
 .title {
     margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    font-family: var(--font-display);
+    font-size: 34px;
+    font-style: var(--display-style);
+    font-weight: 400;
+    line-height: 1;
 }
 
 .subtitle {
-    margin: 2px 0 0;
-    color: var(--text);
-    opacity: 0.75;
+    margin: 6px 0 0;
+    color: var(--muted);
 }
 
 .settingsToggle {
@@ -42,5 +43,4 @@
     top: 12px;
     right: 12px;
     background: var(--panel-bg);
-    backdrop-filter: blur(12px);
 }

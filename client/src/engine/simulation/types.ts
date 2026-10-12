@@ -1,11 +1,12 @@
 import type {
+    GrowthOrder,
     HouseGeometry,
     HouseNode,
     Polygon,
     SideBehaviorByCoverage,
     Transform,
 } from "../../types";
-import type { GrowTimingStats, SimulationTickProfile } from "./profiling";
+import type { RandomSource } from "./random";
 
 export type AABB = {
     minX: number;
@@ -38,25 +39,32 @@ export type RunSimulationTickInput = {
     sideBehaviorByCoverage: SideBehaviorByCoverage;
     houseGeometry: HouseGeometry;
     allowOverlap: boolean;
+    growthOrder: GrowthOrder;
     nextHouseId: number;
     worldState: SimulationWorldState;
-    debugProfilingEnabled?: boolean;
+    random: RandomSource;
+};
+
+// Counts and timings of one tick, logged to the console when debug profiling is on.
+export type SimulationTickProfile = {
+    housesBefore: number;
+    housesAfter: number;
+    dieCount: number;
+    growCandidates: number;
+    growAttempts: number;
+    growSuccesses: number;
+    spatialIndexCells: number;
+    classifyMs: number;
+    cleanupMs: number;
+    growMs: number;
+    totalMs: number;
 };
 
 export type RunSimulationTickResult = {
     houses: HouseNode[];
     nextHouseId: number;
     worldState: SimulationWorldState;
-    profile?: SimulationTickProfile;
-};
-
-export type TryGrowFromHostResult = {
-    growTiming: GrowTimingStats;
-    candidateCount: number;
-    candidateUniqueCount: number;
-    indexQueryMs: number;
-    indexUpdateMs: number;
-    newHouse?: HouseWorldData;
+    profile: SimulationTickProfile;
 };
 
 // Houses and their cached world data; always replaced together.

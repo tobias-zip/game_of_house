@@ -32,8 +32,6 @@ export const OVERLAP_EPSILON = 0.0001;
 export const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value));
 
-export const randomItem = <T>(items: T[]) => items[Math.floor(Math.random() * items.length)];
-
 export const applyTransform = (transform: Transform, point: Point): Point => ({
     x: transform.a * point.x + transform.c * point.y + transform.e,
     y: transform.b * point.x + transform.d * point.y + transform.f,

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import styles from "./App.module.css";
+import ClickToolbar from "./components/ClickToolbar";
 import HouseCanvas from "./components/HouseCanvas";
 import OverloadNotice from "./components/OverloadNotice";
 import PlayBar from "./components/PlayBar";
@@ -33,6 +34,7 @@ function App() {
             <main className={`${styles.layout} ${isSettingsOpen ? styles.settingsOpen : ""}`}>
                 <HouseCanvas />
                 <TitleBlock />
+                <ClickToolbar />
                 {!isSettingsOpen && (
                     <button
                         type="button"

@@ -9,15 +9,15 @@
     transform: translateX(-50%);
     border: 1px solid var(--panel-border);
     border-left: 3px solid var(--accent);
-    border-radius: 10px;
+    border-radius: var(--radius);
     background: var(--panel-bg);
-    backdrop-filter: blur(12px);
-    box-shadow: var(--panel-shadow);
 }
 
 .title {
-    margin: 0 0 4px;
-    font-weight: 600;
+    margin: 0 0 6px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-style: var(--display-style);
 }
 
 .body {

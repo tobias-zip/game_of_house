@@ -1,31 +1,59 @@
-export type ThemeName = "night" | "classic";
+export type ThemeName = "nocturne" | "spore" | "kiln" | "xenolith";
 
 export type Theme = {
     label: string;
+    description: string;
     fillColor: string;
     strokeColor: string;
+    rippleColor: string;
+    // Outline of frozen houses; the same as `--accent` in index.css.
+    markColor: string;
     // House fill per number of connected sides, 0–5.
     coveredSidesPalette: string[];
 };
 
-// UI colors live in index.css under the matching `data-theme`.
+// UI colors and fonts live in index.css under the matching `data-theme`. All designs are dark.
 export const THEMES: Record<ThemeName, Theme> = {
-    night: {
-        label: "Night",
-        fillColor: "#e9e4d8",
-        strokeColor: "#101418",
-        coveredSidesPalette: ["#4b3f7a", "#4a6595", "#4c8ea8", "#5fb3a0", "#a8cf8a", "#f0e3a0"],
+    nocturne: {
+        label: "Nocturne",
+        description: "A star chart: moonlit blues and bone, serif and plate lettering.",
+        fillColor: "#d9d2c0",
+        strokeColor: "#0a0c12",
+        rippleColor: "#f3d48a",
+        markColor: "#e6c983",
+        coveredSidesPalette: ["#2b2547", "#33406b", "#3b6585", "#58918f", "#a3c09b", "#ece0b4"],
     },
-    classic: {
-        label: "Classic",
-        fillColor: "#d9d9d9",
-        strokeColor: "#000000",
-        coveredSidesPalette: ["#440154", "#414487", "#2a788e", "#22a884", "#7ad151", "#fde725"],
+    spore: {
+        label: "Spore",
+        description: "Deep-sea glow: dark water, lichen greens, soft organic shapes.",
+        fillColor: "#7fdc9a",
+        strokeColor: "#040a09",
+        rippleColor: "#ff5fa2",
+        markColor: "#b9f56b",
+        coveredSidesPalette: ["#10302e", "#11504a", "#127a66", "#22a37a", "#7ed97a", "#e3fb7c"],
+    },
+    kiln: {
+        label: "Kiln",
+        description: "Fired clay: charcoal, terracotta and ochre, like a riso print.",
+        fillColor: "#e3c79a",
+        strokeColor: "#15100d",
+        rippleColor: "#f6e7c8",
+        markColor: "#e2733c",
+        coveredSidesPalette: ["#3a2724", "#6a352a", "#a24c2e", "#cf733b", "#dca75c", "#ecdcae"],
+    },
+    xenolith: {
+        label: "Xenolith",
+        description: "A specimen from elsewhere: violet dark, rose and mineral light.",
+        fillColor: "#c9b8f0",
+        strokeColor: "#0b0810",
+        rippleColor: "#8ff0ff",
+        markColor: "#8ff0ff",
+        coveredSidesPalette: ["#25142f", "#4a1d5c", "#7b2f7c", "#b6578b", "#e8918e", "#ffd8a8"],
     },
 };
 
 export const THEME_NAMES = Object.keys(THEMES) as ThemeName[];
-export const DEFAULT_THEME: ThemeName = "night";
+export const DEFAULT_THEME: ThemeName = "nocturne";
 
 const THEME_STORAGE_KEY = "overhouse:theme";
 

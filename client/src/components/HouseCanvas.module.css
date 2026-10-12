@@ -21,13 +21,12 @@
 
 .viewControls button {
     background: var(--panel-bg);
-    backdrop-filter: blur(12px);
 }
 
 /* Keeps the controls clear of the centered play bar on phones. */
 @media (max-width: 700px) {
     .viewControls {
-        top: 64px;
+        top: 84px;
         bottom: auto;
         left: 12px;
     }

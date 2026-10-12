@@ -1,33 +1,84 @@
-/* Theme tokens; the theme name comes from theme.ts via `data-theme` on <html>. */
+/* Design tokens; the theme name comes from theme.ts via `data-theme` on <html>. All
+   designs are dark. Fonts are loaded in index.html. */
 :root,
-:root[data-theme="night"] {
-    color-scheme: dark;
-    --canvas-bg: #101418;
-    --text: #e6e1d6;
-    --muted: #8d949e;
-    --accent: #e8b86b;
-    --accent-contrast: #1a1408;
-    --panel-bg: rgb(23 28 35 / 82%);
-    --panel-border: rgb(255 255 255 / 9%);
-    --panel-shadow: 0 8px 32px rgb(0 0 0 / 35%);
-    --control-bg: rgb(255 255 255 / 6%);
-    --control-hover: rgb(255 255 255 / 12%);
-    --control-border: rgb(255 255 255 / 12%);
+:root[data-theme="nocturne"] {
+    --canvas-bg: #0a0c12;
+    --canvas-glow: #161b2b;
+    --text: #e9e3d3;
+    --muted: #8b8797;
+    --accent: #e6c983;
+    --accent-contrast: #14110a;
+    --panel-bg: rgb(10 12 18 / 92%);
+    --panel-border: rgb(233 227 211 / 16%);
+    --control-bg: transparent;
+    --control-hover: rgb(233 227 211 / 8%);
+    --control-border: rgb(233 227 211 / 22%);
+    --radius: 0px;
+    --font-display: "Instrument Serif", Georgia, serif;
+    --font-body: "IBM Plex Mono", ui-monospace, monospace;
+    --body-size: 12px;
+    --display-style: italic;
 }
 
-:root[data-theme="classic"] {
-    color-scheme: light;
-    --canvas-bg: #ffffff;
-    --text: #1b1b1b;
-    --muted: #666666;
-    --accent: #2f6fd6;
-    --accent-contrast: #ffffff;
-    --panel-bg: rgb(250 250 250 / 92%);
-    --panel-border: rgb(0 0 0 / 12%);
-    --panel-shadow: 0 6px 24px rgb(0 0 0 / 12%);
-    --control-bg: #ffffff;
-    --control-hover: #f0f0f0;
-    --control-border: rgb(0 0 0 / 20%);
+:root[data-theme="spore"] {
+    --canvas-bg: #040a09;
+    --canvas-glow: #0b2420;
+    --text: #d9f5e4;
+    --muted: #6f9286;
+    --accent: #b9f56b;
+    --accent-contrast: #071407;
+    --panel-bg: rgb(6 18 16 / 90%);
+    --panel-border: rgb(185 245 107 / 14%);
+    --control-bg: rgb(185 245 107 / 4%);
+    --control-hover: rgb(185 245 107 / 10%);
+    --control-border: rgb(185 245 107 / 20%);
+    --radius: 18px;
+    --font-display: "Syne", sans-serif;
+    --font-body: "Syne", sans-serif;
+    --body-size: 13px;
+    --display-style: normal;
+}
+
+:root[data-theme="kiln"] {
+    --canvas-bg: #15100d;
+    --canvas-glow: #2a1c14;
+    --text: #f0e4cf;
+    --muted: #a69279;
+    --accent: #e2733c;
+    --accent-contrast: #1a0d06;
+    --panel-bg: rgb(28 21 17 / 94%);
+    --panel-border: rgb(240 228 207 / 14%);
+    --control-bg: rgb(240 228 207 / 4%);
+    --control-hover: rgb(240 228 207 / 10%);
+    --control-border: rgb(240 228 207 / 22%);
+    --radius: 3px;
+    --font-display: "Fraunces", Georgia, serif;
+    --font-body: "Fraunces", Georgia, serif;
+    --body-size: 13px;
+    --display-style: italic;
+}
+
+:root[data-theme="xenolith"] {
+    --canvas-bg: #0b0810;
+    --canvas-glow: #1f1430;
+    --text: #ece4f6;
+    --muted: #8f84a6;
+    --accent: #8ff0ff;
+    --accent-contrast: #06141a;
+    --panel-bg: rgb(13 9 20 / 92%);
+    --panel-border: rgb(143 240 255 / 14%);
+    --control-bg: transparent;
+    --control-hover: rgb(143 240 255 / 8%);
+    --control-border: rgb(143 240 255 / 22%);
+    --radius: 0px;
+    --font-display: "Major Mono Display", ui-monospace, monospace;
+    --font-body: "IBM Plex Mono", ui-monospace, monospace;
+    --body-size: 12px;
+    --display-style: normal;
+}
+
+:root {
+    color-scheme: dark;
 }
 
 html,
@@ -40,10 +91,11 @@ body,
 }
 
 body {
-    background: var(--canvas-bg);
+    background: radial-gradient(ellipse at 50% 45%, var(--canvas-glow), var(--canvas-bg) 70%);
+    background-color: var(--canvas-bg);
     color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size: 13px;
+    font-family: var(--font-body);
+    font-size: var(--body-size);
     accent-color: var(--accent);
 }
 
@@ -58,8 +110,13 @@ button,
 select {
     padding: 5px 10px;
     border: 1px solid var(--control-border);
-    border-radius: 6px;
+    border-radius: var(--radius);
     background: var(--control-bg);
+}
+
+/* Native dropdown lists ignore transparent backgrounds. */
+option {
+    background: var(--canvas-bg);
 }
 
 button {
@@ -82,7 +139,7 @@ button[data-variant="primary"]:hover {
 }
 
 :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 1px solid var(--accent);
     outline-offset: 2px;
 }
 
