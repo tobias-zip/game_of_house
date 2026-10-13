@@ -31,21 +31,28 @@ A cellular-automaton toy in the spirit of Conway's Game of Life, but with houses
 
 ## Interaction
 
-- The play bar plays, pauses (also with Space), steps one tick and sets the speed.
-- The toolbar on the left picks what clicking a house does:
+- The play bar at the bottom plays, pauses (also with Space), steps one tick and sets the speed.
+- The toolbar at the top picks what clicking a house does (on phones, tap the tool button
+  to choose):
   - **Ripple**: a wave travels outwards through connected houses.
   - **Echo**: a wave that bounces back from dead ends.
   - **Lineage**: lights the houses that grew this one, back to its oldest living ancestor.
   - **Seed**: grows a new house on a free side.
   - **Remove**: removes the house.
   - **Freeze**: the rules can't kill a frozen house; click again to thaw.
-- Drag to pan; scroll or pinch to zoom. **Fit** frames all houses.
+  - Ripple, echo and lineage each have their own speed, glow time and strength, under
+    Tool settings in the settings panel. Ripple and echo also have a range (up to 300
+    hops); lineage always goes back to the oldest ancestor.
+- Drag to pan; scroll or pinch to zoom. The buttons in the upper right fit all houses
+  into view, reset the view, reset the world or everything (after a confirmation), save
+  a screenshot of the canvas without the interface, and share. **Settings** in the
+  middle opens all other settings.
 - Houses are colored by their number of connected sides, so growth fronts and stable
-  cores stand out. Four dark designs change the palette, type and feel: Nocturne
-  (default), Spore, Kiln and Xenolith.
+  cores stand out. Under Look you can pick the colors for few and many connected sides
+  and an accent color.
 - The address bar always holds a link to the current rules, house shape and the world's
-  random seed, so the link grows the same world from its first house; **Copy link** in
-  the settings shares it. Each reset starts a world with a new seed.
+  random seed, so the link grows the same world from its first house; **Share** copies
+  it. Each reset starts a world with a new seed.
 - When the world gets too big for the device, the simulation pauses and offers to
   start over.
 - On phones the settings open as a sheet from the **Settings** button.

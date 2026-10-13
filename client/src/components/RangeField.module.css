@@ -1,0 +1,15 @@
+.label {
+    display: flex;
+    justify-content: space-between;
+    margin: 12px 0 6px;
+    color: var(--muted);
+}
+
+.value {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.slider {
+    width: 100%;
+}

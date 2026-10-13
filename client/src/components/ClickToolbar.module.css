@@ -1,33 +1,33 @@
-.panel {
-    position: absolute;
-    top: 50%;
-    left: 16px;
-    width: 120px;
-    transform: translateY(-50%);
+.picker {
+    position: relative;
+}
+
+/* Only shown on phones. */
+.toggle {
+    display: none;
+    padding: 6px 9px;
+    background-color: var(--panel-bg);
 }
 
 .toolbar {
-    display: grid;
+    display: flex;
     border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
     background: var(--panel-bg);
-    overflow: hidden;
 }
 
 .tool {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 7px 10px;
+    gap: 8px;
+    padding: 6px 10px;
     border: 0;
-    border-radius: 0;
-    background: transparent;
+    background-color: transparent;
     color: var(--muted);
     text-align: left;
 }
 
 .tool + .tool {
-    border-top: 1px solid var(--panel-border);
+    border-left: 1px solid var(--panel-border);
 }
 
 .tool:hover {
@@ -35,7 +35,7 @@
 }
 
 .tool[aria-pressed="true"] {
-    background: var(--accent);
+    background-color: var(--accent);
     color: var(--accent-contrast);
 }
 
@@ -49,29 +49,34 @@
     stroke-linecap: round;
 }
 
-/* Positioned below the toolbar so its changing length never moves the buttons. */
-.hint {
-    position: absolute;
-    top: 100%;
-    margin: 8px 0 0;
-    color: var(--muted);
-    font-size: 0.92em;
-    line-height: 1.4;
-    text-shadow: 0 0 8px var(--canvas-bg);
+/* Without room for labels the tools are icons, named by their tooltips. */
+@media (max-width: 1279px) {
+    .label {
+        display: none;
+    }
 }
 
-/* On phones the tools become an icon row above the play bar. */
+/* On phones the tools drop down as a labelled list below the toggle. */
 @media (max-width: 700px) {
-    .panel {
-        top: auto;
-        bottom: 88px;
-        left: 50%;
-        width: auto;
-        transform: translateX(-50%);
+    .toggle {
+        display: block;
+    }
+
+    .toggle .icon {
+        display: block;
     }
 
     .toolbar {
-        grid-auto-flow: column;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 2;
+        display: none;
+        flex-direction: column;
+    }
+
+    .expanded {
+        display: flex;
     }
 
     .tool {
@@ -79,12 +84,11 @@
     }
 
     .tool + .tool {
-        border-top: 0;
-        border-left: 1px solid var(--panel-border);
+        border-top: 1px solid var(--panel-border);
+        border-left: 0;
     }
 
-    .label,
-    .hint {
-        display: none;
+    .label {
+        display: inline;
     }
 }

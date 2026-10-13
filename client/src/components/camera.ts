@@ -13,9 +13,18 @@ export type CanvasSize = {
     height: number;
 };
 
+// Screen pixels along each canvas edge that overlays cover.
+export type ScreenInsets = {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+};
+
 const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 4;
-const FIT_PADDING = 0.9;
+// Fit leaves this share of the free area around the houses.
+const FIT_PADDING = 0.85;
 
 export const INITIAL_CAMERA: Camera = { pan: { x: 0, y: 0 }, zoom: 0.6 };
 
@@ -71,14 +80,26 @@ export const zoomCameraAt = (
     };
 };
 
-export const fitCameraToBounds = (bounds: AABB, size: CanvasSize): Camera => {
+// Frames `bounds` in the part of the canvas that `insets` leave free.
+export const fitCameraToBounds = (bounds: AABB, size: CanvasSize, insets: ScreenInsets): Camera => {
+    const freeWidth = Math.max(1, size.width - insets.left - insets.right);
+    const freeHeight = Math.max(1, size.height - insets.top - insets.bottom);
     const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
     const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
-    const scale = Math.min(size.width / boundsWidth, size.height / boundsHeight) * FIT_PADDING;
+    const scale = Math.min(freeWidth / boundsWidth, freeHeight / boundsHeight) * FIT_PADDING;
     const zoom = clamp(scale / getFitScale(size), MIN_ZOOM, MAX_ZOOM);
     const appliedScale = getFitScale(size) * zoom;
     const centerX = (bounds.minX + bounds.maxX) / 2;
     const centerY = (bounds.minY + bounds.maxY) / 2;
+    // Pan is measured from the canvas center; shift it to the center of the free area.
+    const freeCenterOffsetX = (insets.left - insets.right) / 2;
+    const freeCenterOffsetY = (insets.top - insets.bottom) / 2;
 
-    return { zoom, pan: { x: -centerX * appliedScale, y: -centerY * appliedScale } };
+    return {
+        zoom,
+        pan: {
+            x: freeCenterOffsetX - centerX * appliedScale,
+            y: freeCenterOffsetY - centerY * appliedScale,
+        },
+    };
 };

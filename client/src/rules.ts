@@ -34,18 +34,17 @@ export const decodeRules = (code: string): SideBehaviorByCoverage | null => {
 
 export type RulePreset = {
     name: string;
-    description: string;
     code: string;
 };
 
 // Picked from a sweep of all rule tables starting from one house with the default shape.
 // Every preset grows a lone house (0 → grow), otherwise a fresh world does nothing.
 export const RULE_PRESETS: [RulePreset, ...RulePreset[]] = [
-    { name: "Slow bloom", description: "Grows steadily outwards.", code: "ggnggn" },
-    { name: "Crystal", description: "Grows briefly, then freezes.", code: "ggngnn" },
-    { name: "Lace", description: "Houses with 3 or 5 neighbours die.", code: "ggndgd" },
-    { name: "Coral", description: "Fast growth with constant dying.", code: "ggdgdd" },
-    { name: "Wildfire", description: "Every house grows.", code: "gggggg" },
+    { name: "Slow bloom", code: "ggnggn" },
+    { name: "Crystal", code: "ggngnn" },
+    { name: "Lace", code: "ggndgd" },
+    { name: "Coral", code: "ggdgdd" },
+    { name: "Wildfire", code: "gggggg" },
 ];
 
 export const DEFAULT_RULE_PRESET = RULE_PRESETS[0];

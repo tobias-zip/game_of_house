@@ -1,0 +1,33 @@
+.anchor {
+    position: relative;
+    display: flex;
+}
+
+.anchor > button {
+    flex: 1;
+}
+
+/* Opens downwards, aligned to the button's right edge, since it lives in the top bar. */
+.popup {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 2;
+    width: 210px;
+    padding: 12px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel-bg);
+}
+
+.question {
+    margin: 0 0 10px;
+}
+
+.buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.buttons button {
+    flex: 1;
+}

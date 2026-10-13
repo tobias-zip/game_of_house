@@ -1,62 +1,33 @@
-.sidebar {
+/* Drops down from the top bar it sits in; the sections are columns side by side. */
+.panel {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    bottom: 12px;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
     z-index: 1;
     display: none;
-    width: 280px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 24px;
+    max-height: 55dvh;
     box-sizing: border-box;
-    padding: 14px 16px;
+    padding: 14px 16px 16px;
     overflow-y: auto;
     border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
     background: var(--panel-bg);
 }
 
 .open {
-    display: block;
-}
-
-.header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-
-.title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 24px;
-    font-style: var(--display-style);
-    font-weight: 400;
-}
-
-.closeButton {
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border-color: transparent;
-    font-size: 20px;
-    line-height: 1;
+    display: grid;
 }
 
 .section {
-    padding: 10px 0;
-    border-top: 1px solid var(--panel-border);
+    min-width: 0;
 }
 
-.section summary {
-    font-family: var(--font-display);
-    font-size: 17px;
-    font-style: var(--display-style);
-    cursor: pointer;
-}
-
-.section[open] summary {
-    margin-bottom: 8px;
+.sectionTitle {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 400;
 }
 
 .label {
@@ -64,11 +35,6 @@
     justify-content: space-between;
     margin: 12px 0 6px;
     color: var(--muted);
-}
-
-.value {
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
 }
 
 .row {
@@ -106,7 +72,6 @@
     margin: 0;
     padding: 0;
     border: 1px solid var(--control-border);
-    border-radius: var(--radius);
     overflow: hidden;
 }
 
@@ -168,7 +133,6 @@
     flex: none;
     width: 10px;
     height: 10px;
-    border-radius: var(--radius);
 }
 
 .checkboxLabel {
@@ -176,10 +140,6 @@
     align-items: center;
     gap: 8px;
     margin-top: 12px;
-}
-
-.fullWidth {
-    width: 100%;
 }
 
 .shapePreview {
@@ -197,52 +157,6 @@
     vector-effect: non-scaling-stroke;
 }
 
-.designs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-    border: 0;
-}
-
-.design {
-    display: grid;
-    gap: 6px;
-    padding: 8px;
-    border: 1px solid var(--control-border);
-    border-radius: var(--radius);
-    cursor: pointer;
-}
-
-.design:hover {
-    background: var(--control-hover);
-}
-
-.design:has(input:checked) {
-    border-color: var(--accent);
-}
-
-.design:has(input:focus-visible) {
-    outline: 1px solid var(--accent);
-    outline-offset: 2px;
-}
-
-.design input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.designPalette {
-    display: flex;
-    height: 8px;
-}
-
-.designChip {
-    flex: 1;
-}
-
 .colorField {
     display: flex;
     align-items: center;
@@ -255,7 +169,6 @@
     height: 20px;
     padding: 0;
     border: 1px solid var(--control-border);
-    border-radius: var(--radius);
     background: none;
 }
 
@@ -268,26 +181,20 @@
     line-height: 1.5;
 }
 
-/* On narrow screens the settings become a bottom sheet over the canvas. */
+/* On phones the sections stack in one scrolling column. */
 @media (max-width: 700px) {
-    .sidebar {
-        top: auto;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        display: block;
-        width: auto;
-        max-height: 70dvh;
-        border-width: 1px 0 0;
-        transform: translateY(100%);
-        visibility: hidden;
-        transition:
-            transform 0.2s ease,
-            visibility 0.2s;
+    .panel {
+        grid-template-columns: 1fr;
+        gap: 0;
+        max-height: 60dvh;
+        padding-top: 0;
     }
 
-    .open {
-        transform: none;
-        visibility: visible;
+    .section {
+        padding: 12px 0;
+    }
+
+    .section + .section {
+        border-top: 1px solid var(--panel-border);
     }
 }

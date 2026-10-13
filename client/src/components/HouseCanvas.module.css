@@ -10,24 +10,3 @@
     display: block;
     touch-action: none;
 }
-
-.viewControls {
-    position: absolute;
-    bottom: 16px;
-    left: 16px;
-    display: flex;
-    gap: 6px;
-}
-
-.viewControls button {
-    background: var(--panel-bg);
-}
-
-/* Keeps the controls clear of the centered play bar on phones. */
-@media (max-width: 700px) {
-    .viewControls {
-        top: 84px;
-        bottom: auto;
-        left: 12px;
-    }
-}

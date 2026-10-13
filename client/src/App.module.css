@@ -5,42 +5,58 @@
     overflow: hidden;
 }
 
-/* Space the open settings panel takes on the right; centered overlays use it. */
-.settingsOpen {
-    --sidebar-space: 304px;
-}
-
-@media (max-width: 700px) {
-    .settingsOpen {
-        --sidebar-space: 0px;
-    }
-}
-
-.titleBlock {
+/* Tools, settings toggle and actions spread along the top; the settings panel drops
+   down from here. */
+.topBar {
     position: absolute;
     top: 16px;
+    right: 16px;
     left: 16px;
-    pointer-events: none;
-    text-shadow: 0 0 12px var(--canvas-bg);
-}
-
-.title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 34px;
-    font-style: var(--display-style);
-    font-weight: 400;
-    line-height: 1;
-}
-
-.subtitle {
-    margin: 6px 0 0;
-    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 12px;
 }
 
 .settingsToggle {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: var(--panel-bg);
+    display: flex;
+    align-items: center;
+    background-color: var(--panel-bg);
+}
+
+.settingsToggle[aria-expanded="true"] {
+    border-color: var(--accent);
+}
+
+.icon {
+    display: none;
+    width: 18px;
+    height: 18px;
+    fill: var(--panel-bg);
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+}
+
+/* On phones everything is one row of icon buttons: tool picker, settings, actions. */
+@media (max-width: 700px) {
+    .topBar {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        justify-content: space-between;
+        gap: 4px;
+    }
+
+    .settingsToggle {
+        padding: 6px 9px;
+    }
+
+    .icon {
+        display: block;
+    }
+
+    .text {
+        display: none;
+    }
 }

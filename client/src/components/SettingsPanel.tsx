@@ -1,21 +1,21 @@
-import { useState } from "react";
 import { useHouseCanvas } from "../context/useHouseCanvas";
 import { getHousePolygon } from "../domain/house/geometry";
 import { createRandomRules, decodeRules, findPresetForRules, RULE_PRESETS } from "../rules";
-import { THEME_NAMES, THEMES } from "../theme";
 import {
+    CLICK_ACTION_LABELS,
     COVERED_SIDE_COUNTS,
     GROWTH_ORDER_OPTIONS,
     type GrowthOrder,
     type HouseGeometry,
-    type RippleParams,
+    isPulseKind,
     SIDE_BEHAVIOR_OPTIONS,
     type SideBehavior,
 } from "../types";
-import styles from "./Sidebar.module.css";
+import PulseSettings from "./PulseSettings";
+import RangeField from "./RangeField";
+import styles from "./SettingsPanel.module.css";
 
 const CUSTOM_PRESET_VALUE = "custom";
-const COPY_STATUS_RESET_MS = 2000;
 
 const SIDE_BEHAVIOR_LABELS: Record<SideBehavior, string> = {
     die: "die",
@@ -85,53 +85,14 @@ function Segmented<T extends string>({
     );
 }
 
-function RangeField({
-    id,
-    label,
-    valueText,
-    min,
-    max,
-    step,
-    value,
-    onChange,
-}: {
-    id: string;
-    label: string;
-    valueText: string;
-    min: number;
-    max: number;
-    step: number;
-    value: number;
-    onChange: (value: number) => void;
-}) {
-    return (
-        <>
-            <label htmlFor={id} className={styles.label}>
-                {label} <span className={styles.value}>{valueText}</span>
-            </label>
-            <input
-                id={id}
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={value}
-                onChange={(event) => onChange(Number(event.target.value))}
-                className={styles.fullWidth}
-            />
-        </>
-    );
-}
-
-type SidebarProps = {
+type SettingsPanelProps = {
     isOpen: boolean;
-    onClose: () => void;
 };
 
-function Sidebar({ isOpen, onClose }: SidebarProps) {
+// All settings, one column per section; opened from the top bar.
+function SettingsPanel({ isOpen }: SettingsPanelProps) {
     const {
         addHouse,
-        resetWorld,
         applyRules,
         allowOverlap,
         growthOrder,
@@ -154,51 +115,34 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         sideScale,
         strokeColor,
         undersideScale,
-        themeName,
-        setThemeName,
+        palette,
+        setPaletteColor,
+        coveredSidesPalette,
         colorBySides,
         setColorBySides,
-        rippleParams,
-        setRippleParams,
+        clickAction,
     } = useHouseCanvas();
-    const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
 
     const activePreset = findPresetForRules(sideBehaviorByCoverage);
-    const palette = THEMES[themeName].coveredSidesPalette;
-
-    const setRippleParam = (key: keyof Omit<RippleParams, "color">) => (value: number) =>
-        setRippleParams((current) => ({ ...current, [key]: value }));
-
-    const copyLink = async () => {
-        try {
-            await navigator.clipboard.writeText(window.location.href);
-            setCopyStatus("copied");
-        } catch {
-            setCopyStatus("failed");
-        }
-        window.setTimeout(() => setCopyStatus("idle"), COPY_STATUS_RESET_MS);
-    };
 
     return (
         <aside
             id="settings"
-            className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}
+            className={`${styles.panel} ${isOpen ? styles.open : ""}`}
             aria-label="Settings"
         >
-            <div className={styles.header}>
-                <h2 className={styles.title}>Settings</h2>
-                <button
-                    type="button"
-                    className={styles.closeButton}
-                    onClick={onClose}
-                    aria-label="Close settings"
-                >
-                    ×
-                </button>
-            </div>
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Tool settings</h2>
+                <p className={styles.label}>{CLICK_ACTION_LABELS[clickAction]}</p>
+                {isPulseKind(clickAction) ? (
+                    <PulseSettings kind={clickAction} />
+                ) : (
+                    <p className={styles.hint}>This tool has no settings.</p>
+                )}
+            </section>
 
-            <details className={styles.section} open>
-                <summary>Rules</summary>
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Rules</h2>
                 <div className={styles.row}>
                     <select
                         aria-label="Rule preset"
@@ -220,19 +164,15 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                         Random
                     </button>
                 </div>
-                <p className={styles.hint}>
-                    {activePreset?.description ?? "Your own rule set."} Choosing a preset restarts
-                    the world.
-                </p>
-
-                <p className={styles.label}>What a house does with n connected sides</p>
                 <div className={styles.ruleTable}>
                     {COVERED_SIDE_COUNTS.map((coveredSides) => (
                         <div key={coveredSides} className={styles.ruleRow}>
                             <span
                                 className={styles.swatch}
                                 style={{
-                                    background: colorBySides ? palette[coveredSides] : "none",
+                                    background: colorBySides
+                                        ? coveredSidesPalette[coveredSides]
+                                        : "none",
                                 }}
                                 aria-hidden="true"
                             />
@@ -248,10 +188,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                         </div>
                     ))}
                 </div>
-            </details>
+            </section>
 
-            <details className={styles.section} open>
-                <summary>World</summary>
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>World</h2>
                 <p className={styles.label}>Growth order</p>
                 <Segmented
                     name="growth-order"
@@ -261,10 +201,6 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     value={growthOrder}
                     onChange={setGrowthOrder}
                 />
-                <p className={styles.hint}>
-                    Growing houses take turns in this order; earlier ones get the first pick of free
-                    space.
-                </p>
                 <label className={styles.checkboxLabel}>
                     <input
                         type="checkbox"
@@ -277,14 +213,11 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <button type="button" className={styles.grow} onClick={addHouse}>
                         Add house
                     </button>
-                    <button type="button" className={styles.grow} onClick={resetWorld}>
-                        Reset world
-                    </button>
                 </div>
-            </details>
+            </section>
 
-            <details className={styles.section}>
-                <summary>Shape</summary>
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Shape</h2>
                 <HouseShapePreview houseGeometry={houseGeometry} />
                 <RangeField
                     id="underside-scale"
@@ -316,94 +249,18 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     value={roofAngle}
                     onChange={setRoofAngle}
                 />
-                <p className={styles.hint}>Presets were tuned for the default shape.</p>
-            </details>
+            </section>
 
-            <details className={styles.section}>
-                <summary>Pulse</summary>
-                <p className={styles.hint}>Ripple, echo and lineage use these settings.</p>
-                <RangeField
-                    id="ripple-range"
-                    label="Range"
-                    valueText={`${rippleParams.range.toFixed(0)} hops`}
-                    min={1}
-                    max={100}
-                    step={1}
-                    value={rippleParams.range}
-                    onChange={setRippleParam("range")}
-                />
-                <RangeField
-                    id="ripple-speed"
-                    label="Speed"
-                    valueText={`${rippleParams.speed.toFixed(0)} hops/s`}
-                    min={10}
-                    max={100}
-                    step={1}
-                    value={rippleParams.speed}
-                    onChange={setRippleParam("speed")}
-                />
-                <RangeField
-                    id="ripple-lifetime"
-                    label="Glow time"
-                    valueText={`${rippleParams.lifetime.toFixed(0)} ms`}
-                    min={10}
-                    max={1000}
-                    step={10}
-                    value={rippleParams.lifetime}
-                    onChange={setRippleParam("lifetime")}
-                />
-                <RangeField
-                    id="ripple-opacity"
-                    label="Strength"
-                    valueText={rippleParams.opacity.toFixed(2)}
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={rippleParams.opacity}
-                    onChange={setRippleParam("opacity")}
-                />
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Look</h2>
                 <label className={styles.colorField}>
                     <input
                         type="color"
-                        value={rippleParams.color}
-                        onChange={(event) =>
-                            setRippleParams((current) => ({
-                                ...current,
-                                color: event.target.value,
-                            }))
-                        }
+                        value={palette.accentColor}
+                        onChange={(event) => setPaletteColor("accentColor", event.target.value)}
                     />
-                    Color
+                    Accent
                 </label>
-            </details>
-
-            <details className={styles.section}>
-                <summary>Look</summary>
-                <fieldset className={styles.designs}>
-                    <legend className={styles.visuallyHidden}>Design</legend>
-                    {THEME_NAMES.map((name) => (
-                        <label key={name} className={styles.design}>
-                            <input
-                                type="radio"
-                                name="design"
-                                value={name}
-                                checked={themeName === name}
-                                onChange={() => setThemeName(name)}
-                            />
-                            <span className={styles.designName}>{THEMES[name].label}</span>
-                            <span className={styles.designPalette} aria-hidden="true">
-                                {THEMES[name].coveredSidesPalette.map((color) => (
-                                    <span
-                                        key={color}
-                                        className={styles.designChip}
-                                        style={{ background: color }}
-                                    />
-                                ))}
-                            </span>
-                        </label>
-                    ))}
-                </fieldset>
-                <p className={styles.hint}>{THEMES[themeName].description}</p>
 
                 <label className={styles.checkboxLabel}>
                     <input
@@ -414,6 +271,30 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     Color houses by connected sides
                 </label>
                 <div className={styles.row}>
+                    {colorBySides && (
+                        <>
+                            <label className={styles.colorField}>
+                                <input
+                                    type="color"
+                                    value={palette.fewSidesColor}
+                                    onChange={(event) =>
+                                        setPaletteColor("fewSidesColor", event.target.value)
+                                    }
+                                />
+                                Few sides
+                            </label>
+                            <label className={styles.colorField}>
+                                <input
+                                    type="color"
+                                    value={palette.manySidesColor}
+                                    onChange={(event) =>
+                                        setPaletteColor("manySidesColor", event.target.value)
+                                    }
+                                />
+                                Many sides
+                            </label>
+                        </>
+                    )}
                     {!colorBySides && (
                         <label className={styles.colorField}>
                             <input
@@ -433,25 +314,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                         Outline
                     </label>
                 </div>
-            </details>
+            </section>
 
-            <details className={styles.section}>
-                <summary>Share</summary>
-                <p className={styles.hint}>
-                    The link holds the rules, the house shape and the world's seed, so others can
-                    grow the same world from its first house.
-                </p>
-                <button type="button" className={styles.fullWidth} onClick={copyLink}>
-                    {copyStatus === "copied"
-                        ? "Link copied"
-                        : copyStatus === "failed"
-                          ? "Copy failed: use the address bar"
-                          : "Copy link"}
-                </button>
-            </details>
-
-            <details className={styles.section}>
-                <summary>Debug</summary>
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Debug</h2>
                 <label className={styles.checkboxLabel}>
                     <input
                         type="checkbox"
@@ -468,13 +334,12 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     />
                     Profiling logs in console
                 </label>
-            </details>
-
-            <p className={styles.footer}>
-                Drag to pan · scroll or pinch to zoom · click a house · Space to play/pause
-            </p>
+                <p className={styles.footer}>
+                    Drag to pan · scroll or pinch to zoom · click a house · Space to play/pause
+                </p>
+            </section>
         </aside>
     );
 }
 
-export default Sidebar;
+export default SettingsPanel;

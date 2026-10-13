@@ -7,7 +7,7 @@ import {
     rippleReachDelayMs,
 } from "../engine/actions/ripple";
 import type { AABB, SimulationWorld } from "../engine/simulation/types";
-import type { ClickAction, HouseGeometry, HouseNode, Point, Polygon, RippleParams } from "../types";
+import type { HouseGeometry, HouseNode, Point, Polygon, PulseKind, RippleParams } from "../types";
 import {
     type Camera,
     type CanvasSize,
@@ -15,11 +15,6 @@ import {
     getCameraScale,
     getVisibleWorldBounds,
 } from "./camera";
-
-export type PulseKind = Extract<ClickAction, "ripple" | "echo" | "lineage">;
-
-export const isPulseKind = (action: ClickAction): action is PulseKind =>
-    action === "ripple" || action === "echo" || action === "lineage";
 
 // A ripple, echo or lineage pulse started by a click.
 export type ActiveRipple = {
@@ -52,7 +47,8 @@ type DrawWorldInput = {
     houseGeometry: HouseGeometry;
     fillColor: string;
     strokeColor: string;
-    frozenColor: string;
+    // Outline of frozen houses and the tint of pulses.
+    accentColor: string;
     // When set, houses are filled by their number of connected sides (index 0–5).
     coveredSidesPalette: string[] | null;
     showConnectionSideIndicators: boolean;
@@ -195,7 +191,7 @@ export const drawWorld = ({
     houseGeometry,
     fillColor,
     strokeColor,
-    frozenColor,
+    accentColor,
     coveredSidesPalette,
     showConnectionSideIndicators,
     ripples,
@@ -215,16 +211,16 @@ export const drawWorld = ({
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 1;
     ctx.stroke(housePaths.outlinePath);
-    ctx.strokeStyle = frozenColor;
+    ctx.strokeStyle = accentColor;
     ctx.lineWidth = FROZEN_OUTLINE_WIDTH;
     ctx.lineJoin = "round";
     ctx.stroke(housePaths.frozenPath);
 
     ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = accentColor;
     for (const ripple of ripples) {
         const elapsedMs = now - ripple.startTime;
         ctx.globalAlpha = ripple.params.opacity;
-        ctx.fillStyle = ripple.params.color;
 
         ripple.pathsByDistance.forEach((path, distance) => {
             const reachDelayMs = rippleReachDelayMs(distance, ripple.params.speed);

@@ -1,83 +1,16 @@
-/* Design tokens; the theme name comes from theme.ts via `data-theme` on <html>. All
-   designs are dark. Fonts are loaded in index.html. */
-:root,
-:root[data-theme="nocturne"] {
+/* Design tokens. `--accent` and `--accent-contrast` follow the player's accent color
+   (set from HouseCanvasProvider); these values are the fallback. */
+:root {
     --canvas-bg: #0a0c12;
-    --canvas-glow: #161b2b;
     --text: #e9e3d3;
     --muted: #8b8797;
-    --accent: #e6c983;
+    --accent: #5aa9ff;
     --accent-contrast: #14110a;
     --panel-bg: rgb(10 12 18 / 92%);
     --panel-border: rgb(233 227 211 / 16%);
-    --control-bg: transparent;
     --control-hover: rgb(233 227 211 / 8%);
     --control-border: rgb(233 227 211 / 22%);
-    --radius: 0px;
-    --font-display: "Instrument Serif", Georgia, serif;
-    --font-body: "IBM Plex Mono", ui-monospace, monospace;
-    --body-size: 12px;
-    --display-style: italic;
-}
-
-:root[data-theme="spore"] {
-    --canvas-bg: #040a09;
-    --canvas-glow: #0b2420;
-    --text: #d9f5e4;
-    --muted: #6f9286;
-    --accent: #b9f56b;
-    --accent-contrast: #071407;
-    --panel-bg: rgb(6 18 16 / 90%);
-    --panel-border: rgb(185 245 107 / 14%);
-    --control-bg: rgb(185 245 107 / 4%);
-    --control-hover: rgb(185 245 107 / 10%);
-    --control-border: rgb(185 245 107 / 20%);
-    --radius: 18px;
-    --font-display: "Syne", sans-serif;
-    --font-body: "Syne", sans-serif;
-    --body-size: 13px;
-    --display-style: normal;
-}
-
-:root[data-theme="kiln"] {
-    --canvas-bg: #15100d;
-    --canvas-glow: #2a1c14;
-    --text: #f0e4cf;
-    --muted: #a69279;
-    --accent: #e2733c;
-    --accent-contrast: #1a0d06;
-    --panel-bg: rgb(28 21 17 / 94%);
-    --panel-border: rgb(240 228 207 / 14%);
-    --control-bg: rgb(240 228 207 / 4%);
-    --control-hover: rgb(240 228 207 / 10%);
-    --control-border: rgb(240 228 207 / 22%);
-    --radius: 3px;
-    --font-display: "Fraunces", Georgia, serif;
-    --font-body: "Fraunces", Georgia, serif;
-    --body-size: 13px;
-    --display-style: italic;
-}
-
-:root[data-theme="xenolith"] {
-    --canvas-bg: #0b0810;
-    --canvas-glow: #1f1430;
-    --text: #ece4f6;
-    --muted: #8f84a6;
-    --accent: #8ff0ff;
-    --accent-contrast: #06141a;
-    --panel-bg: rgb(13 9 20 / 92%);
-    --panel-border: rgb(143 240 255 / 14%);
-    --control-bg: transparent;
-    --control-hover: rgb(143 240 255 / 8%);
-    --control-border: rgb(143 240 255 / 22%);
-    --radius: 0px;
-    --font-display: "Major Mono Display", ui-monospace, monospace;
-    --font-body: "IBM Plex Mono", ui-monospace, monospace;
-    --body-size: 12px;
-    --display-style: normal;
-}
-
-:root {
+    --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     color-scheme: dark;
 }
 
@@ -91,11 +24,10 @@ body,
 }
 
 body {
-    background: radial-gradient(ellipse at 50% 45%, var(--canvas-glow), var(--canvas-bg) 70%);
-    background-color: var(--canvas-bg);
+    background: var(--canvas-bg);
     color: var(--text);
-    font-family: var(--font-body);
-    font-size: var(--body-size);
+    font-family: var(--font);
+    font-size: 12px;
     accent-color: var(--accent);
 }
 
@@ -110,8 +42,8 @@ button,
 select {
     padding: 5px 10px;
     border: 1px solid var(--control-border);
-    border-radius: var(--radius);
-    background: var(--control-bg);
+    border-radius: 0;
+    background-color: transparent;
 }
 
 /* Native dropdown lists ignore transparent backgrounds. */
@@ -123,19 +55,17 @@ button {
     cursor: pointer;
 }
 
+/* The hover tint is a layer over the background color, so it looks the same on every
+   button. Components set only `background-color` to keep it. */
 button:hover,
 select:hover {
-    background: var(--control-hover);
+    background-image: linear-gradient(var(--control-hover), var(--control-hover));
 }
 
 button[data-variant="primary"] {
     border-color: transparent;
-    background: var(--accent);
+    background-color: var(--accent);
     color: var(--accent-contrast);
-}
-
-button[data-variant="primary"]:hover {
-    filter: brightness(1.08);
 }
 
 :focus-visible {
