@@ -149,6 +149,13 @@ checks that cannot be run and explain why.
   `.git-blame-ignore-revs`.
 - Merge only when the user asks. After merging, the deploy runs on its own.
 
+## Deploys, versions, and caching
+
+- Load everything the app shows through Vite (`import`,
+  `new URL("./image.png", import.meta.url)`, `import.meta.glob`), so files get
+  content-hashed names that can be cached for good. `client/public/` is only for
+  files that need a fixed URL: favicons, the web manifest, `robots.txt`.
+
 ## Clarification and scope
 
 - Inspect the repository first; do not ask questions it can answer.
