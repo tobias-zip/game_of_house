@@ -8,10 +8,8 @@
     gap: 10px;
     padding: 8px 14px 8px 8px;
     border: 1px solid var(--panel-border);
-    border-radius: 999px;
+    border-radius: var(--radius);
     background: var(--panel-bg);
-    backdrop-filter: blur(12px);
-    box-shadow: var(--panel-shadow);
     white-space: nowrap;
 }
 
@@ -60,7 +58,7 @@
 
 .stats strong {
     color: var(--text);
-    font-weight: 600;
+    font-weight: 500;
 }
 
 @media (max-width: 700px) {

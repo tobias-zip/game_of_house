@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useHouseCanvas } from "../context/useHouseCanvas";
 import { pointInPolygon } from "../domain/house/geometry";
-import { rippleDurationMs } from "../engine/actions/ripple";
 import type { AABB } from "../engine/simulation/types";
 import { querySpatialIndex } from "../engine/simulation/worldState";
 import { THEMES } from "../theme";
@@ -15,7 +14,15 @@ import {
     screenToWorld,
     zoomCameraAt,
 } from "./camera";
-import { type ActiveRipple, drawWorld, refreshRippleEffects } from "./drawWorld";
+import {
+    type ActiveRipple,
+    buildHousePaths,
+    drawWorld,
+    type HousePaths,
+    isPulseKind,
+    isRippleFinished,
+    refreshRipplePaths,
+} from "./drawWorld";
 import styles from "./HouseCanvas.module.css";
 
 // Pointer movement (CSS px) before a press counts as a drag instead of a click.
@@ -42,6 +49,9 @@ function HouseCanvas() {
         showConnectionSideIndicators,
         clickAction,
         rippleParams,
+        seedHouse,
+        removeHouse,
+        toggleFrozen,
     } = useHouseCanvas();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const sizeRef = useRef<CanvasSize>({ width: 0, height: 0 });
@@ -50,8 +60,10 @@ function HouseCanvas() {
     const pointersRef = useRef(new Map<number, Point>());
     const gestureRef = useRef<Gesture | null>(null);
     const needsDrawRef = useRef(true);
+    const housePathsRef = useRef<HousePaths | null>(null);
 
     const coveredSidesPalette = colorBySides ? THEMES[themeName].coveredSidesPalette : null;
+    const frozenColor = THEMES[themeName].markColor;
 
     // The draw loop reads the latest props from here instead of re-rendering.
     const sceneRef = useRef({
@@ -59,6 +71,7 @@ function HouseCanvas() {
         houseGeometry,
         fillColor,
         strokeColor,
+        frozenColor,
         coveredSidesPalette,
         showConnectionSideIndicators,
     });
@@ -68,6 +81,7 @@ function HouseCanvas() {
             houseGeometry,
             fillColor,
             strokeColor,
+            frozenColor,
             coveredSidesPalette,
             showConnectionSideIndicators,
         };
@@ -77,6 +91,7 @@ function HouseCanvas() {
         houseGeometry,
         fillColor,
         strokeColor,
+        frozenColor,
         coveredSidesPalette,
         showConnectionSideIndicators,
     ]);
@@ -116,8 +131,10 @@ function HouseCanvas() {
             frameId = requestAnimationFrame(drawFrame);
 
             const now = Date.now();
+            const scene = sceneRef.current;
+            refreshRipplePaths(ripplesRef.current, scene.world);
             ripplesRef.current = ripplesRef.current.filter(
-                (ripple) => now - ripple.startTime < rippleDurationMs(ripple.params),
+                (ripple) => !isRippleFinished(ripple, now),
             );
             const hasRipples = ripplesRef.current.length > 0;
             // Keep drawing one frame after the last ripple expires to clear its overlay.
@@ -127,8 +144,15 @@ function HouseCanvas() {
             const size = sizeRef.current;
             if (size.width === 0 || size.height === 0) return;
 
-            const scene = sceneRef.current;
-            refreshRippleEffects(ripplesRef.current, scene.world.houses);
+            const colorBySides = scene.coveredSidesPalette !== null;
+            let housePaths = housePathsRef.current;
+            if (housePaths?.world !== scene.world || housePaths.colorBySides !== colorBySides) {
+                housePaths = buildHousePaths(
+                    scene.world,
+                    scene.coveredSidesPalette?.length ?? null,
+                );
+                housePathsRef.current = housePaths;
+            }
             drawWorld({
                 ctx,
                 size,
@@ -136,6 +160,7 @@ function HouseCanvas() {
                 camera: cameraRef.current,
                 ripples: ripplesRef.current,
                 now,
+                housePaths,
                 ...scene,
             });
         };
@@ -193,17 +218,21 @@ function HouseCanvas() {
     };
 
     const runClickAction = (screenPoint: Point) => {
-        if (clickAction !== "ripple") return;
-
         const houseId = findHouseAt(screenPoint);
         if (houseId === null) return;
 
+        if (clickAction === "seed") seedHouse(houseId);
+        if (clickAction === "remove") removeHouse(houseId);
+        if (clickAction === "freeze") toggleFrozen(houseId);
+        if (!isPulseKind(clickAction)) return;
+
         ripplesRef.current.push({
+            kind: clickAction,
             originHouseId: houseId,
             startTime: Date.now(),
             params: rippleParams,
-            effects: [],
-            effectsForHouses: null,
+            pathsByDistance: [],
+            pathsForWorld: null,
         });
     };
 

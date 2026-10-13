@@ -1,4 +1,4 @@
-import { randomItem } from "./domain/house/geometry";
+import { randomItem } from "./engine/simulation/random";
 import {
     COVERED_SIDE_COUNTS,
     SIDE_BEHAVIOR_OPTIONS,
@@ -60,7 +60,7 @@ export const findPresetForRules = (rules: SideBehaviorByCoverage) =>
 
 // A lone house must grow or a fresh world never changes, so only counts 1–5 are random.
 export const createRandomRules = (): SideBehaviorByCoverage => {
-    const randomBehavior = () => randomItem(SIDE_BEHAVIOR_OPTIONS) ?? "nothing";
+    const randomBehavior = () => randomItem(SIDE_BEHAVIOR_OPTIONS, Math.random) ?? "nothing";
     return {
         0: "grow",
         1: randomBehavior(),

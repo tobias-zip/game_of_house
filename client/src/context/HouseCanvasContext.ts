@@ -4,6 +4,7 @@ import type { ThemeName } from "../theme";
 import type {
     ClickAction,
     CoveredSideCount,
+    GrowthOrder,
     HouseGeometry,
     RippleParams,
     SideBehavior,
@@ -28,6 +29,7 @@ export type HouseCanvasContextValue = {
     roofAngle: number;
     houseGeometry: HouseGeometry;
     allowOverlap: boolean;
+    growthOrder: GrowthOrder;
     themeName: ThemeName;
     colorBySides: boolean;
     fillColor: string;
@@ -39,6 +41,7 @@ export type HouseCanvasContextValue = {
     setSideScale: Dispatch<SetStateAction<number>>;
     setRoofAngle: Dispatch<SetStateAction<number>>;
     setAllowOverlap: Dispatch<SetStateAction<boolean>>;
+    setGrowthOrder: Dispatch<SetStateAction<GrowthOrder>>;
     setThemeName: (themeName: ThemeName) => void;
     setColorBySides: Dispatch<SetStateAction<boolean>>;
     setFillColor: Dispatch<SetStateAction<string>>;
@@ -53,6 +56,10 @@ export type HouseCanvasContextValue = {
     setRippleParams: Dispatch<SetStateAction<RippleParams>>;
     stepSimulation: () => void;
     addHouse: () => void;
+    // Click actions on a house.
+    seedHouse: (hostHouseId: number) => void;
+    removeHouse: (houseId: number) => void;
+    toggleFrozen: (houseId: number) => void;
     resetWorld: () => void;
     keepGoingAfterOverload: () => void;
 };
