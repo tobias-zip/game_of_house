@@ -1,4 +1,4 @@
-import { randomItem } from "./domain/house/geometry";
+import { randomItem } from "./engine/simulation/random";
 import {
     COVERED_SIDE_COUNTS,
     SIDE_BEHAVIOR_OPTIONS,
@@ -34,18 +34,17 @@ export const decodeRules = (code: string): SideBehaviorByCoverage | null => {
 
 export type RulePreset = {
     name: string;
-    description: string;
     code: string;
 };
 
 // Picked from a sweep of all rule tables starting from one house with the default shape.
 // Every preset grows a lone house (0 → grow), otherwise a fresh world does nothing.
 export const RULE_PRESETS: [RulePreset, ...RulePreset[]] = [
-    { name: "Slow bloom", description: "Grows steadily outwards.", code: "ggnggn" },
-    { name: "Crystal", description: "Grows briefly, then freezes.", code: "ggngnn" },
-    { name: "Lace", description: "Houses with 3 or 5 neighbours die.", code: "ggndgd" },
-    { name: "Coral", description: "Fast growth with constant dying.", code: "ggdgdd" },
-    { name: "Wildfire", description: "Every house grows.", code: "gggggg" },
+    { name: "Slow bloom", code: "ggnggn" },
+    { name: "Crystal", code: "ggngnn" },
+    { name: "Lace", code: "ggndgd" },
+    { name: "Coral", code: "ggdgdd" },
+    { name: "Wildfire", code: "gggggg" },
 ];
 
 export const DEFAULT_RULE_PRESET = RULE_PRESETS[0];
@@ -60,7 +59,7 @@ export const findPresetForRules = (rules: SideBehaviorByCoverage) =>
 
 // A lone house must grow or a fresh world never changes, so only counts 1–5 are random.
 export const createRandomRules = (): SideBehaviorByCoverage => {
-    const randomBehavior = () => randomItem(SIDE_BEHAVIOR_OPTIONS) ?? "nothing";
+    const randomBehavior = () => randomItem(SIDE_BEHAVIOR_OPTIONS, Math.random) ?? "nothing";
     return {
         0: "grow",
         1: randomBehavior(),

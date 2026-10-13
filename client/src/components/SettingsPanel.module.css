@@ -1,0 +1,200 @@
+/* Drops down from the top bar it sits in; the sections are columns side by side. */
+.panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    z-index: 1;
+    display: none;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 24px;
+    max-height: 55dvh;
+    box-sizing: border-box;
+    padding: 14px 16px 16px;
+    overflow-y: auto;
+    border: 1px solid var(--panel-border);
+    background: var(--panel-bg);
+}
+
+.open {
+    display: grid;
+}
+
+.section {
+    min-width: 0;
+}
+
+.sectionTitle {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.label {
+    display: flex;
+    justify-content: space-between;
+    margin: 12px 0 6px;
+    color: var(--muted);
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.grow {
+    flex: 1;
+    min-width: 0;
+}
+
+.hint {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 0.92em;
+    line-height: 1.45;
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.segmented {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--control-border);
+    overflow: hidden;
+}
+
+.segment {
+    flex: 1;
+    min-width: 0;
+}
+
+.segment + .segment {
+    border-left: 1px solid var(--control-border);
+}
+
+.segment input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.segment span {
+    display: block;
+    padding: 4px 6px;
+    color: var(--muted);
+    text-align: center;
+    cursor: pointer;
+}
+
+.segment span:hover {
+    background: var(--control-hover);
+    color: var(--text);
+}
+
+.segment input:checked + span {
+    background: var(--accent);
+    color: var(--accent-contrast);
+}
+
+.segment input:focus-visible + span {
+    outline: 1px solid var(--accent);
+    outline-offset: -3px;
+}
+
+.ruleTable {
+    display: grid;
+    gap: 5px;
+}
+
+.ruleRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ruleCount {
+    width: 1ch;
+    font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+    flex: none;
+    width: 10px;
+    height: 10px;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.shapePreview {
+    display: block;
+    width: 100%;
+    height: 72px;
+    fill: var(--accent);
+    fill-opacity: 0.2;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+}
+
+.shapePreview polygon {
+    vector-effect: non-scaling-stroke;
+}
+
+.colorField {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.colorField input {
+    width: 28px;
+    height: 20px;
+    padding: 0;
+    border: 1px solid var(--control-border);
+    background: none;
+}
+
+.footer {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--panel-border);
+    color: var(--muted);
+    font-size: 0.92em;
+    line-height: 1.5;
+}
+
+/* On phones the sections stack in one scrolling column. */
+@media (max-width: 700px) {
+    .panel {
+        grid-template-columns: 1fr;
+        gap: 0;
+        max-height: 60dvh;
+        padding-top: 0;
+    }
+
+    .section {
+        padding: 12px 0;
+    }
+
+    .section + .section {
+        border-top: 1px solid var(--panel-border);
+    }
+}

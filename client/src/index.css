@@ -1,33 +1,17 @@
-/* Theme tokens; the theme name comes from theme.ts via `data-theme` on <html>. */
-:root,
-:root[data-theme="night"] {
+/* Design tokens. `--accent` and `--accent-contrast` follow the player's accent color
+   (set from HouseCanvasProvider); these values are the fallback. */
+:root {
+    --canvas-bg: #0a0c12;
+    --text: #e9e3d3;
+    --muted: #8b8797;
+    --accent: #5aa9ff;
+    --accent-contrast: #14110a;
+    --panel-bg: rgb(10 12 18 / 92%);
+    --panel-border: rgb(233 227 211 / 16%);
+    --control-hover: rgb(233 227 211 / 8%);
+    --control-border: rgb(233 227 211 / 22%);
+    --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     color-scheme: dark;
-    --canvas-bg: #101418;
-    --text: #e6e1d6;
-    --muted: #8d949e;
-    --accent: #e8b86b;
-    --accent-contrast: #1a1408;
-    --panel-bg: rgb(23 28 35 / 82%);
-    --panel-border: rgb(255 255 255 / 9%);
-    --panel-shadow: 0 8px 32px rgb(0 0 0 / 35%);
-    --control-bg: rgb(255 255 255 / 6%);
-    --control-hover: rgb(255 255 255 / 12%);
-    --control-border: rgb(255 255 255 / 12%);
-}
-
-:root[data-theme="classic"] {
-    color-scheme: light;
-    --canvas-bg: #ffffff;
-    --text: #1b1b1b;
-    --muted: #666666;
-    --accent: #2f6fd6;
-    --accent-contrast: #ffffff;
-    --panel-bg: rgb(250 250 250 / 92%);
-    --panel-border: rgb(0 0 0 / 12%);
-    --panel-shadow: 0 6px 24px rgb(0 0 0 / 12%);
-    --control-bg: #ffffff;
-    --control-hover: #f0f0f0;
-    --control-border: rgb(0 0 0 / 20%);
 }
 
 html,
@@ -42,8 +26,8 @@ body,
 body {
     background: var(--canvas-bg);
     color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size: 13px;
+    font-family: var(--font);
+    font-size: 12px;
     accent-color: var(--accent);
 }
 
@@ -58,31 +42,34 @@ button,
 select {
     padding: 5px 10px;
     border: 1px solid var(--control-border);
-    border-radius: 6px;
-    background: var(--control-bg);
+    border-radius: 0;
+    background-color: transparent;
+}
+
+/* Native dropdown lists ignore transparent backgrounds. */
+option {
+    background: var(--canvas-bg);
 }
 
 button {
     cursor: pointer;
 }
 
+/* The hover tint is a layer over the background color, so it looks the same on every
+   button. Components set only `background-color` to keep it. */
 button:hover,
 select:hover {
-    background: var(--control-hover);
+    background-image: linear-gradient(var(--control-hover), var(--control-hover));
 }
 
 button[data-variant="primary"] {
     border-color: transparent;
-    background: var(--accent);
+    background-color: var(--accent);
     color: var(--accent-contrast);
 }
 
-button[data-variant="primary"]:hover {
-    filter: brightness(1.08);
-}
-
 :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 1px solid var(--accent);
     outline-offset: 2px;
 }
 

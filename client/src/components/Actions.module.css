@@ -1,0 +1,41 @@
+.actions {
+    display: flex;
+    gap: 6px;
+}
+
+.actions button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--panel-bg);
+}
+
+.actions button[data-variant="primary"] {
+    background-color: var(--accent);
+}
+
+.icon {
+    display: none;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Without room for text the actions are icon buttons, named by their tooltips. */
+@media (max-width: 1279px) {
+    .actions button {
+        padding: 6px 9px;
+    }
+
+    .icon {
+        display: block;
+    }
+
+    .text {
+        display: none;
+    }
+}

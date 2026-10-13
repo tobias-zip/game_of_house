@@ -20,6 +20,7 @@ export const createRootHouse = (id: number): HouseNode => ({
     parentSide: null,
     ownSide: null,
     rootTransform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
+    frozen: false,
 });
 
 export const getFreeSides = (house: HouseNode) => {
@@ -53,6 +54,7 @@ export const connectNewHouse = (
         parentSide: hostSide,
         ownSide: newHouseSide,
         rootTransform: null,
+        frozen: false,
     };
     houseById.set(newHouseId, newHouse);
     return newHouse;

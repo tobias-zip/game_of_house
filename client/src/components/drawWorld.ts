@@ -1,11 +1,13 @@
 import { applyTransform, getHousePolygon } from "../domain/house/geometry";
 import {
+    computeEchoEffect,
+    computeLineageEffect,
     computeRippleEffect,
     type RippleEffect,
     rippleReachDelayMs,
 } from "../engine/actions/ripple";
 import type { AABB, SimulationWorld } from "../engine/simulation/types";
-import type { HouseGeometry, HouseNode, Point, Polygon, RippleParams } from "../types";
+import type { HouseGeometry, HouseNode, Point, Polygon, PulseKind, RippleParams } from "../types";
 import {
     type Camera,
     type CanvasSize,
@@ -14,13 +16,25 @@ import {
     getVisibleWorldBounds,
 } from "./camera";
 
+// A ripple, echo or lineage pulse started by a click.
 export type ActiveRipple = {
+    kind: PulseKind;
     originHouseId: number;
     startTime: number;
     params: RippleParams;
-    // Hop distances, recomputed whenever the houses change.
-    effects: RippleEffect[];
-    effectsForHouses: HouseNode[] | null;
+    // The reached houses as one path per hop distance, rebuilt whenever the world changes.
+    pathsByDistance: Path2D[];
+    pathsForWorld: SimulationWorld | null;
+};
+
+// Outlines and fills of all houses, built once per world instead of on every frame.
+export type HousePaths = {
+    world: SimulationWorld;
+    colorBySides: boolean;
+    // One path per fill color: a single color, or one per connected-side count.
+    fillPaths: Path2D[];
+    outlinePath: Path2D;
+    frozenPath: Path2D;
 };
 
 type DrawWorldInput = {
@@ -29,9 +43,12 @@ type DrawWorldInput = {
     devicePixelRatio: number;
     camera: Camera;
     world: SimulationWorld;
+    housePaths: HousePaths;
     houseGeometry: HouseGeometry;
     fillColor: string;
     strokeColor: string;
+    // Outline of frozen houses and the tint of pulses.
+    accentColor: string;
     // When set, houses are filled by their number of connected sides (index 0–5).
     coveredSidesPalette: string[] | null;
     showConnectionSideIndicators: boolean;
@@ -40,6 +57,8 @@ type DrawWorldInput = {
 };
 
 const CONNECTION_INDICATOR_COLOR = "#c00";
+// In world units, like the house outline (1).
+const FROZEN_OUTLINE_WIDTH = 5;
 const CONNECTION_INDICATOR_BASE_HALF_WIDTH = 5;
 const CONNECTION_INDICATOR_BASE_INSET = 2;
 const CONNECTION_INDICATOR_TIP_INSET = 10;
@@ -63,6 +82,41 @@ const addPolygonToPath = (path: Path2D, polygon: Polygon) => {
         else path.lineTo(point.x, point.y);
     }
     path.closePath();
+};
+
+// Browsers parse an SVG path string several times faster than they take thousands of
+// separate moveTo/lineTo calls.
+const createPolygonsPath = (polygons: Polygon[]) => {
+    const commands: string[] = [];
+    for (const polygon of polygons) {
+        polygon.forEach((point, index) => {
+            commands.push(`${index === 0 ? "M" : "L"}${point.x} ${point.y}`);
+        });
+        commands.push("Z");
+    }
+    return new Path2D(commands.join(""));
+};
+
+// `paletteSize` is the number of fill colors when houses are colored by connected sides.
+export const buildHousePaths = (world: SimulationWorld, paletteSize: number | null): HousePaths => {
+    const polygonsByFill: Polygon[][] = Array.from({ length: paletteSize ?? 1 }, () => []);
+    const allPolygons: Polygon[] = [];
+    const frozenPolygons: Polygon[] = [];
+    for (const house of world.houses) {
+        const polygon = world.worldState.byHouseId.get(house.id)?.polygon;
+        if (!polygon) continue;
+        polygonsByFill[paletteSize ? countConnectedSides(house) : 0]?.push(polygon);
+        allPolygons.push(polygon);
+        if (house.frozen) frozenPolygons.push(polygon);
+    }
+
+    return {
+        world,
+        colorBySides: paletteSize !== null,
+        fillPaths: polygonsByFill.map(createPolygonsPath),
+        outlinePath: createPolygonsPath(allPolygons),
+        frozenPath: createPolygonsPath(frozenPolygons),
+    };
 };
 
 const getCentroid = (polygon: Polygon): Point => {
@@ -126,16 +180,18 @@ const getConnectedSideTriangles = (houseGeometry: HouseGeometry) => {
     );
 };
 
-// Draws all visible houses as one path, then one overlay path per active ripple.
+// Draws the cached house paths, then the houses each ripple currently tints.
 export const drawWorld = ({
     ctx,
     size,
     devicePixelRatio,
     camera,
     world,
+    housePaths,
     houseGeometry,
     fillColor,
     strokeColor,
+    accentColor,
     coveredSidesPalette,
     showConnectionSideIndicators,
     ripples,
@@ -148,59 +204,42 @@ export const drawWorld = ({
     const origin = getCameraOrigin(camera, size);
     ctx.setTransform(scale, 0, 0, scale, origin.x * devicePixelRatio, origin.y * devicePixelRatio);
 
-    const visibleBounds = getVisibleWorldBounds(camera, size);
-    const visibleHouses = world.houses.flatMap((house) => {
-        const worldData = world.worldState.byHouseId.get(house.id);
-        return worldData && boundsOverlap(worldData.bounds, visibleBounds)
-            ? [{ house, worldData }]
-            : [];
-    });
-
-    // One path per fill color: a single color, or one per connected-side count.
-    const fillPaths = (coveredSidesPalette ?? [fillColor]).map(() => new Path2D());
-    const outlinePath = new Path2D();
-    for (const { house, worldData } of visibleHouses) {
-        const { polygon } = worldData;
-        const fillIndex = coveredSidesPalette ? countConnectedSides(house) : 0;
-        const fillPath = fillPaths[fillIndex];
-        if (fillPath) addPolygonToPath(fillPath, polygon);
-        addPolygonToPath(outlinePath, polygon);
-    }
-    fillPaths.forEach((path, index) => {
+    housePaths.fillPaths.forEach((path, index) => {
         ctx.fillStyle = coveredSidesPalette?.[index] ?? fillColor;
         ctx.fill(path);
     });
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 1;
-    ctx.stroke(outlinePath);
+    ctx.stroke(housePaths.outlinePath);
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = FROZEN_OUTLINE_WIDTH;
+    ctx.lineJoin = "round";
+    ctx.stroke(housePaths.frozenPath);
 
     ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = accentColor;
     for (const ripple of ripples) {
         const elapsedMs = now - ripple.startTime;
-        const ripplePath = new Path2D();
-        let hasActiveHouse = false;
-
-        for (const effect of ripple.effects) {
-            const reachDelayMs = rippleReachDelayMs(effect.distance, ripple.params.speed);
-            const isActive =
-                elapsedMs >= reachDelayMs && elapsedMs <= reachDelayMs + ripple.params.lifetime;
-            const worldData = world.worldState.byHouseId.get(effect.houseId);
-            if (!isActive || !worldData || !boundsOverlap(worldData.bounds, visibleBounds))
-                continue;
-
-            addPolygonToPath(ripplePath, worldData.polygon);
-            hasActiveHouse = true;
-        }
-
-        if (!hasActiveHouse) continue;
         ctx.globalAlpha = ripple.params.opacity;
-        ctx.fillStyle = ripple.params.color;
-        ctx.fill(ripplePath);
+
+        ripple.pathsByDistance.forEach((path, distance) => {
+            const reachDelayMs = rippleReachDelayMs(distance, ripple.params.speed);
+            if (elapsedMs >= reachDelayMs && elapsedMs <= reachDelayMs + ripple.params.lifetime) {
+                ctx.fill(path);
+            }
+        });
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
 
     if (showConnectionSideIndicators) {
+        const visibleBounds = getVisibleWorldBounds(camera, size);
+        const visibleHouses = world.houses.flatMap((house) => {
+            const worldData = world.worldState.byHouseId.get(house.id);
+            return worldData && boundsOverlap(worldData.bounds, visibleBounds)
+                ? [{ house, worldData }]
+                : [];
+        });
         const triangles = getConnectedSideTriangles(houseGeometry);
         const indicatorsPath = new Path2D();
 
@@ -221,11 +260,41 @@ export const drawWorld = ({
     }
 };
 
-// Recomputes ripple hop distances after the houses changed.
-export const refreshRippleEffects = (ripples: ActiveRipple[], houses: HouseNode[]) => {
+const computePulseEffects = (ripple: ActiveRipple, houses: HouseNode[]): RippleEffect[] => {
+    switch (ripple.kind) {
+        case "ripple":
+            return computeRippleEffect(houses, ripple.originHouseId, ripple.params.range);
+        case "echo":
+            return computeEchoEffect(houses, ripple.originHouseId, ripple.params.range);
+        case "lineage":
+            return computeLineageEffect(houses, ripple.originHouseId);
+    }
+};
+
+// A pulse ends once its last lit houses have faded.
+export const isRippleFinished = (ripple: ActiveRipple, now: number) =>
+    ripple.pathsForWorld !== null &&
+    now - ripple.startTime >
+        rippleReachDelayMs(ripple.pathsByDistance.length - 1, ripple.params.speed) +
+            ripple.params.lifetime;
+
+// Recomputes which houses each pulse reaches after the world changed.
+export const refreshRipplePaths = (ripples: ActiveRipple[], world: SimulationWorld) => {
     for (const ripple of ripples) {
-        if (ripple.effectsForHouses === houses) continue;
-        ripple.effects = computeRippleEffect(houses, ripple.originHouseId, ripple.params.range);
-        ripple.effectsForHouses = houses;
+        if (ripple.pathsForWorld === world) continue;
+
+        const effects = computePulseEffects(ripple, world.houses);
+        const polygonsByDistance: Polygon[][] = [];
+        for (const { houseId, distance } of effects) {
+            const polygon = world.worldState.byHouseId.get(houseId)?.polygon;
+            if (!polygon) continue;
+            polygonsByDistance[distance] ??= [];
+            polygonsByDistance[distance].push(polygon);
+        }
+
+        ripple.pathsByDistance = Array.from(polygonsByDistance, (polygons) =>
+            createPolygonsPath(polygons ?? []),
+        );
+        ripple.pathsForWorld = world;
     }
 };

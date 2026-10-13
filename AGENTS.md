@@ -12,10 +12,13 @@ come from project-defaults and are kept in sync with it; change them there first
   die depending on how many of their sides are connected. It invites people to explore
   which patterns this shape produces. The concept is in `README.md`; read it before
   working on simulation rules.
-- Look and feel: playful to use but calm in appearance, closer to a scientific or
-  generative-art piece than to a cartoon game. Default theme "Night" (dark, warm accent);
-  "Classic" is the light alternative. Avoid decorative effects that don't help reading the
-  pattern.
+- Look and feel: playful to use but calm and simple in appearance, closer to a
+  scientific or generative-art piece than to a cartoon game. One dark design: system
+  monospace font (no web fonts), square corners, hairline borders, flat panels and
+  background (no gradients, glass blur or drop shadows). The player picks three colors:
+  few sides and many sides (house fills for 0 and 5 connected sides, blended in OKLCH in
+  between) and an accent (UI highlights, pulses, frozen outline). The defaults are
+  navy, mint green and sky blue. Avoid decorative effects that don't help reading the pattern.
 - Stage: Prototype, client only, no backend. Merges to `main` are deployed to
   https://overhouse.tobias.world by Dokploy, which builds the `Dockerfile` (static
   files served by nginx, `nginx.conf`).
@@ -24,23 +27,47 @@ come from project-defaults and are kept in sync with it; change them there first
     placed by transforming them onto a free side of a host house; overlapping placements
     are rejected unless overlap is allowed.
   - Simulation: each tick, every house looks up the behavior for its number of covered
-    sides (0–5) in a player-editable rule table: `die`, `nothing` or `grow`. Dying houses
-    are removed and disconnected, then growing houses try to attach a new house to a
-    random free side. A spatial index speeds up overlap checks, and hosts whose free
-    sides are all blocked are skipped until a nearby house dies.
-  - Click actions: clicking a house can start a ripple that travels through the
-    connection graph (breadth-first, in hops) and briefly tints the houses it reaches.
+    sides (0–5) in a player-editable rule table: `die`, `nothing` (shown as "stay") or `grow`. Dying houses
+    are removed and disconnected, then growing houses take turns (in random order by
+    default, or oldest first) to attach a new house to a random free side. All
+    randomness comes from a seeded generator, one seed per world, so a seed reproduces a
+    world. A spatial index speeds up overlap checks, and hosts whose free sides are all
+    blocked are skipped until a nearby house dies.
+  - Click actions, picked in an always-visible toolbar on the canvas:
+    - ripple: a wave travels through the connection graph (breadth-first, in hops) and
+      briefly tints the houses it reaches;
+    - echo: a ripple that bounces back from dead ends (a house at distance d whose
+      branch turns at distance t lights again at 2t − d);
+    - lineage: lights the house and its parent chain back to the oldest living
+      ancestor;
+    - seed: grows a house on a random free side of the clicked house;
+    - remove: deletes the house like a dying one;
+    - freeze: toggles a frozen flag; frozen houses ignore "die" and get an accent
+      outline.
+    Ripple, echo and lineage each have their own pulse settings (range up to 300 hops,
+    100 by default, for ripple and echo; speed, glow time, strength), shown for the active tool in the "Tool settings" section of the
+    settings panel. The tools have no visible
+    explanations. Pulses use the accent color.
   - Start: one house, "Slow bloom" rules, playing at 2 ticks per second, ripple on click,
-    houses colored by connected sides. A shared link (`#rules=…&underside=…`) overrides
-    the rules and shape.
+    houses colored by connected sides. A shared link (`#rules=…&underside=…&seed=…`)
+    overrides the rules, shape, growth order and seed.
   - Overload guard: three ticks in a row that take over 200 ms (or start that late)
     pause the simulation and show a notice (reset or keep going).
-  - UI: full-screen canvas (pan, wheel or pinch zoom, Fit / Reset view), title with the
-    active preset, an always-visible play bar (play/pause, step, speed, tick and house
-    counts, Space toggles play), and a floating settings panel with collapsible sections:
-    rules (presets, Random, rule table, overlap, add house, reset world), shape (with
-    preview), click action, appearance (theme, color by connected sides, colors), share
-    link and debug. Below 700px width the panel becomes a bottom sheet.
+  - UI: full-screen canvas (pan, wheel or pinch zoom) with no title. The play bar
+    (play/pause, step, speed, tick and house counts; Space toggles play) sits at the
+    bottom, centered. A top bar spreads out the click toolbar, a Settings toggle and the
+    actions: Fit (frames the houses clear of the bars), Reset view, Reset world and
+    Reset all (each with a confirm popup; Reset all reloads the page without the setup
+    in the link and clears the stored colors, like a fresh visit), Screenshot (downloads
+    the canvas as a PNG without the interface) and Share (copies the link). Below
+    1280px the tools and actions are icons with tooltips. Settings opens a panel below
+    the top bar with the sections as columns: tool settings, rules (presets, Random, rule table as
+    die/stay/grow toggles with each count's house color), world (growth order, overlap,
+    add house), shape (with preview), look (accent, color by connected sides, house
+    colors) and debug. Settings carry no descriptions. Below 700px width the top bar
+    is one row of icon buttons: a tool button showing the active tool (tapping it drops
+    down the labelled tool list), Settings and the actions; the panel stacks its
+    sections in one scrolling column.
 - Analytics: page views and sessions go to Umami at https://umami.tobias.world
   (site "overhouse"), via the tracker tag in `client/index.html`.
 - Frontend: React + TypeScript with CSS Modules, built with Vite. App state lives
@@ -57,23 +84,31 @@ come from project-defaults and are kept in sync with it; change them there first
     table and its defaults, ripple settings).
   - `client/src/rules.ts` — rule table encoding, presets and random rules.
   - `client/src/shareLink.ts` — reading and writing the setup in the URL hash.
-  - `client/src/theme.ts` — theme names, house colors per theme, stored theme choice. UI colors
-    are CSS variables in `client/src/index.css` per `data-theme`.
+  - `client/src/theme.ts` — the player's palette (defaults, blending the house colors
+    per connected-side count, stored choice). Other UI colors are CSS variables in
+    `client/src/index.css`; the provider sets `--accent` from the palette.
   - `client/src/domain/house/` — house model without simulation state: `geometry.ts`
     (polygons, transforms, overlap tests), `graph.ts` (sides, connections).
   - `client/src/engine/simulation/` — `runTick.ts` (one tick: rule application, removal,
     growth), `growFromHost.ts` (placing a house on a free side of a host),
-    `addRandomHouse.ts` (manual "Add house"), `worldState.ts` (cached world
-    transforms and polygons, spatial index, blocked hosts), `profiling.ts` (debug
-    timings), `types.ts`. Tick and growth code mutate houses they copied for the
+    `addHouse.ts` (manual "Add house" and the seed action), `removeHouses.ts` (removal
+    shared by dying and the remove action), `worldState.ts` (cached world
+    transforms and polygons, spatial index, blocked hosts), `random.ts` (seeded random
+    generator), `types.ts`. Tick and growth code mutate houses they copied for the
     current tick and update the world state in place.
-  - `client/src/engine/actions/` — click actions; `ripple.ts` computes ripple propagation.
+  - `client/src/engine/actions/` — click actions; `ripple.ts` computes which houses
+    ripple, echo and lineage light and when.
   - `client/src/context/` — `HouseCanvasProvider.tsx` owns app state and the tick loop;
     `useHouseCanvas.ts` reads it.
   - `client/src/components/` — `HouseCanvas.tsx` (draw loop, pointer and wheel input, ripples,
-    view buttons), `camera.ts` (pan/zoom math), `drawWorld.ts` (batched canvas drawing
-    with viewport culling), `PlayBar.tsx`, `OverloadNotice.tsx`, `Sidebar.tsx`
-    (settings panel). `App.tsx` lays out the overlays and the title.
+    Fit, Reset view and Screenshot for the top bar), `camera.ts` (pan/zoom math), `drawWorld.ts` (canvas drawing; house
+    and ripple paths are built once per world, not per frame), `Actions.tsx`
+    (view, reset, screenshot and share buttons), `ConfirmButton.tsx` (button with a
+    confirm popup), `screenshot.ts` (canvas to PNG
+    download), `PlayBar.tsx`, `ClickToolbar.tsx` (click action
+    picker), `PulseSettings.tsx`, `RangeField.tsx` (labelled
+    slider), `useDismiss.ts` (closes popups on outside click or Escape),
+    `OverloadNotice.tsx`, `SettingsPanel.tsx`. `App.tsx` lays out the top bar and the play bar.
   - `client/public/` — static assets (favicon).
 - Rule and design requirements are supplied per task. Do not invent new rules,
   click actions or house shapes; ask.
