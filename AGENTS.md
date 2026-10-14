@@ -156,6 +156,14 @@ checks that cannot be run and explain why.
   content-hashed names that can be cached for good. `client/public/` is only for
   files that need a fixed URL: favicons, the web manifest, `robots.txt`.
 
+## Analytics
+
+- The tracker tag in `client/index.html` counts only on the domain in
+  `data-domains`, so dev and CI builds send nothing. Keep it matching the deploy
+  domain.
+- Add custom events only when asked, with a `data-umami-event="name"` attribute, or
+  `umami.track("name")` where no element fits.
+
 ## Clarification and scope
 
 - Inspect the repository first; do not ask questions it can answer.
